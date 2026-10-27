@@ -11,16 +11,27 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Change App Name
+      - name: Customize Branding (Graniton)
         run: |
+          # 1. Заміна назви додатка на Graniton
           sed -i 's/<string name="AppName">Telegram<\/string>/<string name="AppName">Graniton<\/string>/g' ./TMessagesProj/src/main/res/values/strings.xml
-
-      - name: Change App Icon
-        run: |
+          
+          # 2. Заміна назви пакета (зміна ID для встановлення другим додатком)
+          find . -type f \( -name "*.java" -o -name "*.xml" -o -name "*.gradle" \) -exec sed -i 's/org.telegram.messenger/org.graniton.messenger/g' {} +
+          
+          # 3. Заміна іконки додатка
           if [ -f "logo.png" ]; then
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher.png
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
           fi
+
+      - name: Mod - Dark Purple Energy Theme
+        run: |
+          # Впровадження глибокої темно-фіолетової палітри у файлі стандартних тем
+          find . -name "Theme.java" -type f -exec sed -i 's/0xff1c242c/0xff0d0214/g' {} +
+          find . -name "Theme.java" -type f -exec sed -i 's/0xff0f171e/0xff08000c/g' {} +
+          find . -name "Theme.java" -type f -exec sed -i 's/0xff212d3b/0xff1a0b2e/g' {} +
+          find . -name "Theme.java" -type f -exec sed -i 's/0xff5288c1/0xff8a2be2/g' {} +
 
       - name: Mod - Privacy & Secret Media Saving
         run: |
@@ -31,7 +42,7 @@ jobs:
           sed -i 's/mediaTtl > 0/mediaTtl == -1/g' ./TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java
           sed -i 's/isSecretMedia()/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
           
-          # 3. Дозвіл на скриншоти та запис екрана в секретних чатах і для зникаючих медіа
+          # 3. Дозвіл на скриншоти та запис екрана у будь-яких чатах
           find . -name "*.java" -type f -exec sed -i 's/FLAG_SECURE/0/g' {} +
 
       - name: Mod - Interface Clean & Media Boost
