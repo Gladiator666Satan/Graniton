@@ -8,15 +8,15 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Change App Name
         run: |
-          # Заміна назви додатка у ресурсах Telegram (замініть 'МійТелеграм' на вашу назву)
           sed -i 's/<string name="AppName">Telegram<\/string>/<string name="AppName">Graniton<\/string>/g' ./TMessagesProj/src/main/res/values/strings.xml
 
       - name: Change App Icon
         run: |
-          # Заміна іконки додатка на вашу (потрібно буде завантажити ваше фото logo.png в репозиторій)
           if [ -f "logo.png" ]; then
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher.png
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
