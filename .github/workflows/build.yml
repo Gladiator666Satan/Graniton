@@ -22,6 +22,30 @@ jobs:
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
           fi
 
+      - name: Mod - Privacy & Secret Media Saving
+        run: |
+          # 1. Вимкнення звіту про прочитання (Режим Привид)
+          sed -i 's/MessagesController.getInstance(currentAccount).markMentionsAsRead/ \/\/ markMentionsAsRead/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java
+          
+          # 2. Дозвіл на збереження зникаючих фото/відео (з бомбочкою) у галерею
+          sed -i 's/mediaTtl > 0/mediaTtl == -1/g' ./TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java
+          sed -i 's/isSecretMedia()/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
+          
+          # 3. Дозвіл на скриншоти та запис екрана в секретних чатах і для зникаючих медіа
+          find . -name "*.java" -type f -exec sed -i 's/FLAG_SECURE/0/g' {} +
+
+      - name: Mod - Interface Clean & Media Boost
+        run: |
+          # 1. Блокування офіційної реклами в каналах
+          sed -i 's/view.isAd = true;/view.isAd = false;\nreturn;/g' ./TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatActionCell.java
+          
+          # 2. Зняття обмежень на копіювання та збереження медіа з захищених каналів
+          sed -i 's/megagroup && !isPublic()/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/ChatObject.java
+          sed -i 's/noforwards/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/ChatObject.java
+          
+          # 3. Максимальна якість камери та менше стиснення медіа для S26 Ultra
+          sed -i 's/int selectedCompression = 1;/int selectedCompression = 0;/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MediaController.java
+
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -40,4 +64,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: telegram-custom-apk
-          path: "**/*.apk" # Цей параметр знайде файл, де б він не лежав у проєкті
+          path: "**/*.apk"
