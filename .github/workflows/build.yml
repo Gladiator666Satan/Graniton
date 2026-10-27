@@ -13,13 +13,14 @@ jobs:
 
       - name: Customize Branding (Graniton)
         run: |
-          # 1. Заміна назви додатка на Graniton
+          # 1. Замена названия приложения на Graniton
           sed -i 's/<string name="AppName">Telegram<\/string>/<string name="AppName">Graniton<\/string>/g' ./TMessagesProj/src/main/res/values/strings.xml
           
-          # 2. Безпечна заміна назви пакета (тільки у конфігурації збірки)
-          sed -i 's/applicationId "org.telegram.messenger"/applicationId "org.graniton.messenger"/g' ./TMessagesProj/build.gradle
+          # 2. Гарантированная замена имени пакета во всех конфигурациях сборки Gradle
+          find . -name "*.gradle" -type f -exec sed -i 's/"org.telegram.messenger"/"org.graniton.messenger"/g' {} +
+          find . -name "*.gradle" -type f -exec sed -i "s/'org.telegram.messenger'/'org.graniton.messenger'/g" {} +
           
-          # 3. Заміна іконки додатка
+          # 3. Замена иконки приложения
           if [ -f "logo.png" ]; then
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher.png
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
@@ -27,7 +28,7 @@ jobs:
 
       - name: Mod - Dark Purple Energy Theme
         run: |
-          # Впровадження глибокої темно-фіолетової палітри у файлі стандартних тем
+          # Внедрение глубокой темно-фиолетовой палитры в файл стандартных тем
           find . -name "Theme.java" -type f -exec sed -i 's/0xff1c242c/0xff0d0214/g' {} +
           find . -name "Theme.java" -type f -exec sed -i 's/0xff0f171e/0xff08000c/g' {} +
           find . -name "Theme.java" -type f -exec sed -i 's/0xff212d3b/0xff1a0b2e/g' {} +
@@ -35,26 +36,26 @@ jobs:
 
       - name: Mod - Privacy & Secret Media Saving
         run: |
-          # 1. Вимкнення звіту про прочитання (Режим Привид)
+          # 1. Отключение отчета о прочтении (Режим Невидимки)
           sed -i 's/MessagesController.getInstance(currentAccount).markMentionsAsRead/ \/\/ markMentionsAsRead/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java
           
-          # 2. Дозвіл на збереження зникаючих фото/відео (з бомбочкою) у галерею
+          # 2. Разрешение на сохранение исчезающих фото/видео в галерею
           sed -i 's/mediaTtl > 0/mediaTtl == -1/g' ./TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java
           sed -i 's/isSecretMedia()/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
           
-          # 3. ТОЧКОВЕ ТА БЕЗПЕЧНЕ вимкнення FLAG_SECURE (не чіпаючи назви методів та класів)
+          # 3. Точечное и безопасное отключение FLAG_SECURE (не ломая названия методов и классов)
           find . -name "*.java" -type f -exec sed -i 's/\.FLAG_SECURE/.0/g' {} +
 
       - name: Mod - Interface Clean & Media Boost
         run: |
-          # 1. Блокування офіційної реклами в каналах
+          # 1. Блокировка официальной рекламы в каналах
           sed -i 's/view.isAd = true;/view.isAd = false;\nreturn;/g' ./TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatActionCell.java
           
-          # 2. Зняття обмежень на копіювання та збереження медіа з захищених каналів
+          # 2. Снятие ограничений на копирование и сохранение медиа из защищенных каналов
           sed -i 's/megagroup && !isPublic()/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/ChatObject.java
           sed -i 's/noforwards/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/ChatObject.java
           
-          # 3. Максимальна якість камери та менше стиснення медіа для S26 Ultra
+          # 3. Максимальное качество камеры и меньшее сжатие медиа
           sed -i 's/int selectedCompression = 1;/int selectedCompression = 0;/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MediaController.java
 
       - name: Set up JDK
