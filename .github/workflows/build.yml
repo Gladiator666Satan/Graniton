@@ -16,8 +16,8 @@ jobs:
           # 1. Заміна назви додатка на Graniton
           sed -i 's/<string name="AppName">Telegram<\/string>/<string name="AppName">Graniton<\/string>/g' ./TMessagesProj/src/main/res/values/strings.xml
           
-          # 2. Заміна назви пакета (зміна ID для встановлення другим додатком)
-          find . -type f \( -name "*.java" -o -name "*.xml" -o -name "*.gradle" \) -exec sed -i 's/org.telegram.messenger/org.graniton.messenger/g' {} +
+          # 2. Безпечна заміна назви пакета (тільки у конфігурації збірки)
+          sed -i 's/applicationId "org.telegram.messenger"/applicationId "org.graniton.messenger"/g' ./TMessagesProj/build.gradle
           
           # 3. Заміна іконки додатка
           if [ -f "logo.png" ]; then
@@ -42,8 +42,8 @@ jobs:
           sed -i 's/mediaTtl > 0/mediaTtl == -1/g' ./TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java
           sed -i 's/isSecretMedia()/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
           
-          # 3. Дозвіл на скриншоти та запис екрана у будь-яких чатах
-          find . -name "*.java" -type f -exec sed -i 's/FLAG_SECURE/0/g' {} +
+          # 3. ТОЧКОВЕ ТА БЕЗПЕЧНЕ вимкнення FLAG_SECURE (не чіпаючи назви методів та класів)
+          find . -name "*.java" -type f -exec sed -i 's/\.FLAG_SECURE/.0/g' {} +
 
       - name: Mod - Interface Clean & Media Boost
         run: |
