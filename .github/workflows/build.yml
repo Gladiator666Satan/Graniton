@@ -1,0 +1,43 @@
+name: Build Custom Telegram Android
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Change App Name
+        run: |
+          # Заміна назви додатка у ресурсах Telegram (замініть 'МійТелеграм' на вашу назву)
+          sed -i 's/<string name="AppName">Telegram<\/string>/<string name="AppName">Graniton<\/string>/g' ./TMessagesProj/src/main/res/values/strings.xml
+
+      - name: Change App Icon
+        run: |
+          # Заміна іконки додатка на вашу (потрібно буде завантажити ваше фото logo.png в репозиторій)
+          if [ -f "logo.png" ]; then
+            cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+          fi
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Inject API Keys
+        run: |
+          sed -i 's/YOUR_API_ID/${{ secrets.TELEGRAM_API_ID }}/g' ./TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+          sed -i 's/YOUR_API_HASH/${{ secrets.TELEGRAM_API_HASH }}/g' ./TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+
+      - name: Build APK
+        run: ./gradlew assembleRelease
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-custom-apk
+          path: app/build/outputs/apk/release/app-release.apk
