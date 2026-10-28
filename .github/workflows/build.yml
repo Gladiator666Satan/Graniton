@@ -27,8 +27,30 @@ jobs:
           
           # 2. Зміна Application ID через gradle.properties (без пошкодження namespace Java-коду)
           sed -i 's/APP_PACKAGE=org.telegram.messenger/APP_PACKAGE=org.graniton.messenger/g' gradle.properties
+
+          # 3. Оптимізація під Galaxy S26 Ultra (тільки arm64-v8a замість 4 платформ: білд ~8-10 хв)
+          sed -i 's/"armeabi-v7a", "arm64-v8a", "x86", "x86_64"/"arm64-v8a"/g' ./TMessagesProj_App/build.gradle
           
-          # 3. Синхронізація Firebase google-services.json для модуля TMessagesProj_App
+          # 4. Налаштування Firebase google-services.json для обох модулів (App та Library)
+          python3 -c '
+          import json, copy
+          path = "./TMessagesProj/google-services.json"
+          try:
+              with open(path) as f:
+                  data = json.load(f)
+              clients = data.get("client", [])
+              pkgs = {c["client_info"]["android_client_info"]["package_name"] for c in clients if "client_info" in c and "android_client_info" in c["client_info"]}
+              if "org.graniton.messenger" in pkgs and "org.telegram.messenger" not in pkgs:
+                  new_client = copy.deepcopy(clients[0])
+                  new_client["client_info"]["android_client_info"]["package_name"] = "org.telegram.messenger"
+                  clients.append(new_client)
+                  data["client"] = clients
+                  with open(path, "w") as f:
+                      json.dump(data, f, indent=2)
+                  print("Added org.telegram.messenger fallback to google-services.json")
+          except Exception as e:
+              print("google-services sync error:", e)
+          '
           if [ -f "./TMessagesProj/google-services.json" ]; then
             cp ./TMessagesProj/google-services.json ./TMessagesProj_App/google-services.json
             if [ -d "./TMessagesProj_AppHuawei" ]; then
@@ -36,7 +58,7 @@ jobs:
             fi
           fi
 
-          # 4. Заміна іконки додатка
+          # 5. Заміна іконки додатка
           if [ -f "logo.png" ]; then
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher.png
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
