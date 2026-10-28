@@ -1,6 +1,9 @@
 name: Build Custom Telegram Android
 on: 
   workflow_dispatch:
+  push:
+    branches:
+      - master
 
 jobs:
   build:
@@ -14,20 +17,26 @@ jobs:
 
       - name: Hard Reset Java Files to Upstream
         run: |
-          # Полностью очищаем папку с кодом от любых локальных изменений и старых автозамен
           git checkout TMessagesProj/src/main/java/
           git clean -fd TMessagesProj/src/main/java/
 
       - name: Customize Branding (Graniton)
         run: |
-          # 1. Замена названия приложения на Graniton
+          # 1. Заміна назви додатка на Graniton
           sed -i 's/<string name="AppName">Telegram<\/string>/<string name="AppName">Graniton<\/string>/g' ./TMessagesProj/src/main/res/values/strings.xml
           
-          # 2. Гарантированная замена имени пакета только во всех конфигурациях сборки Gradle
-          find . -name "*.gradle" -type f -exec sed -i 's/"org.telegram.messenger"/"org.graniton.messenger"/g' {} +
-          find . -name "*.gradle" -type f -exec sed -i "s/'org.telegram.messenger'/'org.graniton.messenger'/g" {} +
+          # 2. Зміна Application ID через gradle.properties (без пошкодження namespace Java-коду)
+          sed -i 's/APP_PACKAGE=org.telegram.messenger/APP_PACKAGE=org.graniton.messenger/g' gradle.properties
           
-          # 3. Замена иконки приложения
+          # 3. Синхронізація Firebase google-services.json для модуля TMessagesProj_App
+          if [ -f "./TMessagesProj/google-services.json" ]; then
+            cp ./TMessagesProj/google-services.json ./TMessagesProj_App/google-services.json
+            if [ -d "./TMessagesProj_AppHuawei" ]; then
+              cp ./TMessagesProj/google-services.json ./TMessagesProj_AppHuawei/google-services.json
+            fi
+          fi
+
+          # 4. Заміна іконки додатка
           if [ -f "logo.png" ]; then
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher.png
             cp logo.png ./TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
@@ -35,7 +44,7 @@ jobs:
 
       - name: Mod - Dark Purple Energy Theme
         run: |
-          # Внедрение глубокой темно-фиолетовой палитры в файл стандартных тем
+          # Впровадження палітри Dark Purple у Theme.java
           find . -name "Theme.java" -type f -exec sed -i 's/0xff1c242c/0xff0d0214/g' {} +
           find . -name "Theme.java" -type f -exec sed -i 's/0xff0f171e/0xff08000c/g' {} +
           find . -name "Theme.java" -type f -exec sed -i 's/0xff212d3b/0xff1a0b2e/g' {} +
@@ -43,27 +52,26 @@ jobs:
 
       - name: Mod - Privacy & Secret Media Saving
         run: |
-          # 1. Отключение отчета о прочтении (Режим Невидимки)
+          # 1. Відключення звіту про прочитання
           sed -i 's/MessagesController.getInstance(currentAccount).markMentionsAsRead/ \/\/ markMentionsAsRead/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java
           
-          # 2. Разрешение на сохранение исчезающих фото/ведео в галерею
+          # 2. Безпечне зняття заборони на збереження зникаючих медіа в MessageObject
           sed -i 's/mediaTtl > 0/mediaTtl == -1/g' ./TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java
-          sed -i 's/isSecretMedia()/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
+          sed -i 's/public boolean isSecretMedia() {/public boolean isSecretMedia() { return false; } public boolean _unused_isSecretMedia() {/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
+          sed -i 's/public static boolean isSecretMedia(TLRPC.Message message) {/public static boolean isSecretMedia(TLRPC.Message message) { return false; } public static boolean _unused_static_isSecretMedia(TLRPC.Message message) {/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
           
-          # 3. Безопасное отключение FLAG_SECURE через замену самого флага во всем коде
+          # 3. Безпечне вимкнення FLAG_SECURE
           find . -name "*.java" -type f -exec sed -i 's/WindowManager\.LayoutParams\.FLAG_SECURE/0/g' {} +
 
       - name: Mod - Interface Clean & Media Boost
         run: |
-          # 1. Блокировка официальной рекламы в каналах
-          sed -i 's/view.isAd = true;/view.isAd = false;\nreturn;/g' ./TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatActionCell.java
-          
-          # 2. Снятие ограничений на копирование и сохранение медиа из защищенных каналов
-          sed -i 's/megagroup && !isPublic()/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/ChatObject.java
-          sed -i 's/noforwards/false/g' ./TMessagesProj/src/main/java/org/telegram/messenger/ChatObject.java
-          
-          # 3. Максимальное качество камеры и меньшее сжатие медиа
+          # 1. Максимальна якість камери та менше стиснення
           sed -i 's/int selectedCompression = 1;/int selectedCompression = 0;/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MediaController.java
+
+      - name: Optimize Runner Memory
+        run: |
+          # Адаптація виділення памʼяті JVM під GitHub Actions runner
+          sed -i 's/-Xmx8g/-Xmx4g/g' gradle.properties
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -72,15 +80,26 @@ jobs:
           distribution: 'temurin'
 
       - name: Inject API Keys
+        env:
+          INPUT_API_ID: ${{ secrets.TELEGRAM_API_ID || secrets.API_ID || secrets.api_id }}
+          INPUT_API_HASH: ${{ secrets.TELEGRAM_API_HASH || secrets.API_HASH || secrets.api_hash }}
         run: |
-          sed -i 's/YOUR_API_ID/${{ secrets.TELEGRAM_API_ID }}/g' ./TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
-          sed -i 's/YOUR_API_HASH/${{ secrets.TELEGRAM_API_HASH }}/g' ./TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+          if [ -n "$INPUT_API_ID" ]; then
+            echo "Injecting custom APP_ID..."
+            sed -i "s/public static int APP_ID = [0-9]*;/public static int APP_ID = $INPUT_API_ID;/g" ./TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+          fi
+          if [ -n "$INPUT_API_HASH" ]; then
+            echo "Injecting custom APP_HASH..."
+            sed -i "s/public static String APP_HASH = \"[^\"]*\";/public static String APP_HASH = \"$INPUT_API_HASH\";/g" ./TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+          fi
 
       - name: Build APK
-        run: ./gradlew assembleRelease
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :TMessagesProj_App:assembleAfatRelease --stacktrace
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: telegram-custom-apk
+          name: Graniton-release-apk
           path: "**/*.apk"
