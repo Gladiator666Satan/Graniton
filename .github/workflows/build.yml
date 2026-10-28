@@ -40,6 +40,7 @@ jobs:
           fi
 
           # 5. Повноцінна заміна адаптивних та звичайних іконок для One UI (Galaxy S26 Ultra)
+          pip3 install --break-system-packages pillow || sudo apt-get install -y python3-pil || true
           python3 generate_icons.py
 
       - name: Mod - Dark Purple Energy Theme
@@ -61,7 +62,7 @@ jobs:
           sed -i 's/public static boolean isSecretMedia(TLRPC.Message message) {/public static boolean isSecretMedia(TLRPC.Message message) { return false; } public static boolean _unused_static_isSecretMedia(TLRPC.Message message) {/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
           
           # 3. Безпечне вимкнення FLAG_SECURE
-          find . -name "*.java" -type f -exec sed -i 's/WindowManager\.LayoutParams\.FLAG_SECURE/0/g' {} +
+          find . -name "*.java" -type f -exec sed -i 's/WindowManager\.LayoutParams\\.FLAG_SECURE/0/g' {} +
 
       - name: Mod - Interface Clean & Media Boost
         run: |
