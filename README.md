@@ -1,46 +1,82 @@
-## Telegram messenger for Android
+<div align="center">
 
-[Telegram](https://telegram.org) is a messaging app with a focus on speed and security. It’s superfast, simple and free.
-This repo contains the official source code for [Telegram App for Android](https://play.google.com/store/apps/details?id=org.telegram.messenger).
+<img src="logo.png" alt="Graniton Logo" width="160" height="160" style="border-radius: 28%;" />
 
-## Creating your Telegram Application
+# Graniton Messenger
 
-We welcome all developers to use our API and source code to create applications on our platform.
-There are several things we require from **all developers** for the moment.
+**Модифікований Telegram для Android із кастомною фіолетовою енергетичною темою, свободою медіа та оптимізацією під Samsung Galaxy S26 Ultra.**
 
-1. [**Obtain your own api_id**](https://core.telegram.org/api/obtaining_api_id) for your application.
-2. Please **do not** use the name Telegram for your app — or make sure your users understand that it is unofficial.
-3. Kindly **do not** use our standard logo (white paper plane in a blue circle) as your app's logo.
-3. Please study our [**security guidelines**](https://core.telegram.org/mtproto/security_guidelines) and take good care of your users' data and privacy.
-4. Please remember to publish **your** code too in order to comply with the licences.
+[![Build Custom Telegram Android](https://github.com/Gladiator666Satan/Graniton/actions/workflows/build.yml/badge.svg)](https://github.com/Gladiator666Satan/Graniton/actions/workflows/build.yml)
+[![Architecture](https://img.shields.io/badge/Architecture-arm64--v8a-8a2be2.svg)](https://github.com/Gladiator666Satan/Graniton)
+[![Optimized For](https://img.shields.io/badge/Optimized%20For-Samsung%20Galaxy%20S26%20Ultra-0d0214.svg)](https://github.com/Gladiator666Satan/Graniton)
+[![Base](https://img.shields.io/badge/Telegram%20Android-v13.1.1-2CA5E0.svg)](https://telegram.org)
+[![License](https://img.shields.io/badge/License-GPLv2%2Fv3-green.svg)](LICENSE)
 
-### API, Protocol documentation
+[📥 **Завантажити останній реліз Graniton APK**](https://github.com/Gladiator666Satan/Graniton/releases)
 
-Telegram API manuals: https://core.telegram.org/api
+---
 
-MTproto protocol manuals: https://core.telegram.org/mtproto
+</div>
 
-### Compilation Guide
+## 🌌 Про проєкт (About Graniton)
 
-**Note**: In order to support [reproducible builds](https://core.telegram.org/reproducible-builds), this repo contains dummy release.keystore,  google-services.json and filled variables inside BuildVars.java. Before publishing your own APKs please make sure to replace all these files with your own.
+**Graniton** — це незалежна, продуктивна та конфіденційна збірка офіційного клієнта Telegram для Android, створена для користувачів, яким потрібен максимальний контроль над медіа, захистом приватності та бездоганний візуальний досвід.
 
-You will require Android Studio 2025.1.4, Android NDK 27.2.12479018 and Android SDK 36.
+Додаток має власний ідентифікатор пакета (`org.graniton.messenger`), тому він встановлюється **як окремий додаток паралельно з офіційним Telegram**, не перезаписуючи його і не конфліктуючи з ним.
 
-1. Clone the Telegram source code with its submodules:
-   ```bash
-   git clone --recursive --shallow-submodules https://github.com/DrKLO/Telegram.git Telegram
-   ```
-   In case you forgot the `--recursive` flag, change to the `Telegram` directory and run:
-   ```bash
-   git submodule init && git submodule update --init --recursive --depth=1
-   ```
-2. Copy your release.keystore into TMessagesProj/config
-3. Fill out RELEASE_KEY_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_STORE_PASSWORD in gradle.properties to access your  release.keystore
-4.  Go to https://console.firebase.google.com/, create two android apps with application IDs org.telegram.messenger and org.telegram.messenger.beta, turn on firebase messaging and download google-services.json, which should be copied to the same folder as TMessagesProj.
-5. Open the project in the Studio (note that it should be opened, NOT imported).
-6. Fill out values in TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java – there’s a link for each of the variables showing where and which data to obtain.
-7. You are ready to compile Telegram.
+---
 
-### Localization
+## ✨ Ключові можливості та модифікації
 
-We moved all translations to https://translations.telegram.org/en/android/. Please use it.
+### 🔮 1. Фірмовий дизайн та брендинг
+* **Dark Purple Energy Theme**: Глибока нічна палітра інтерфейсу (`#0d0214`, `#08000c`, `#1a0b2e`) із насиченими неоново-фіолетовими акцентами (`#8a2be2`) замість стандартного синього кольору Telegram.
+* **One UI Adaptive Icon**: Спеціальна адаптивна іконка для Android 14/15/16 та оболонок Samsung One UI. Логотип центровано з безпечними відступами (safe margins ~72%) на фірмовому темно-фіолетовому фоні, повністю замінено застарілий паперовий літачок.
+* **Унікальний Package ID**: `org.graniton.messenger`.
+
+### 🛡️ 2. Конфіденційність та свобода медіа
+* **Збереження зникаючих фото та відео**: Знято блокування на збереження медіафайлів із таймером самознищення («бомбочкою») — їх можна вільно зберігати напряму в галерею смартфона.
+* **Повне вимкнення FLAG_SECURE**: Дозволено створення скриншотів та запис відео з екрана у таємних чатах (Secret Chats), захищених каналах із забороною копіювання (`noforwards`) та в меню перегляду профілів.
+* **Режим «Привид» для сповіщень**: Вимкнено примусове надсилання звітів про прочитання при переході за згадками (`markMentionsAsRead`), що дозволяє переглядати контекст без викриття своєї присутності.
+
+### ⚡ 3. Апаратний буст для Samsung Galaxy S26 Ultra
+* **Незжата якість камери та фото**: Знижено агресивні алгоритми стиснення Telegram у `MediaController`, забезпечуючи максимальну деталізацію знімків із сучасних сенсорів флагмана.
+* **Чиста 64-бітна архітектура (`arm64-v8a`)**: Усі нативні C++ бібліотеки (TDLib, tmessages, WebRTC) зібрані виключно під 64-бітний флагманський чипсет, що забезпечує ультраплавний фреймрейт 120Hz та швидкий відгук інтерфейсу.
+
+### 🔐 4. Власний підпис та ізоляція
+* **Власний чистий Keystore**: APK підписано унікальним згенерованим RSA 2048-біт ключем Graniton, позбавленим старих публічних тестових відбитків.
+* **Dual Firebase Client**: Інтегровано підтримку push-сповіщень Google Firebase як для нового пакета `org.graniton.messenger`, так і для внутрішніх системних сервісів.
+
+---
+
+## 📥 Встановлення (Installation Guide)
+
+1. Перейдіть у розділ [**Releases**](https://github.com/Gladiator666Satan/Graniton/releases).
+2. Завантажте готовий файл **`Graniton-arm64-v8a.apk`** із найновішого релізу.
+3. Запустіть завантажений файл на вашому Samsung Galaxy / Android-смартфоні.
+
+> [!NOTE]
+> **Під час встановлення на Samsung One UI:**
+> * **Google Play Protect**: Якщо з'явиться вікно захисту, натисніть **«Детальніше» (More details) ➔ «Все одно встановити» (Install anyway)**. Це звичайна реакція Play Protect на самостійно скомпільовані додатки поза Google Play.
+> * **Samsung Auto Blocker**: Якщо увімкнено функцію «Автоблокування», перейдіть у *Налаштування ➔ Безпека та конфіденційність ➔ Автоблокування* та тимчасово вимкніть його або дозвольте встановлення з вашого файлового браузера.
+
+---
+
+## 🛠️ Автоматична збірка (CI/CD Pipeline)
+
+Graniton збирається повністю автоматично за допомогою **GitHub Actions**:
+* Workflow-файл: [`.github/workflows/build.yml`](.github/workflows/build.yml)
+* При кожному оновленні коду в гілці `master`:
+  1. Код синхронізується з усіма підмодулями NDK.
+  2. Застосовуються кастомізації брендингу, колірної палітри, конфіденційності та налаштувань камери.
+  3. Динамічно генеруються адаптивні іконки під One UI.
+  4. Створюється чистий RSA-ключ та інжектуються ваші `TELEGRAM_API_ID` та `TELEGRAM_API_HASH` із секретів репозиторію.
+  5. Gradle збирає оптимізований релізний APK (`assembleAfatRelease`).
+  6. Готовий файл автоматично публікується в [GitHub Releases](https://github.com/Gladiator666Satan/Graniton/releases) та в Actions Artifacts.
+
+---
+
+## ⚖️ Ліцензія та подяка
+
+* Проєкт базується на офіційному відкритому коді [Telegram for Android](https://github.com/DrKLO/Telegram).
+* Поширюється на умовах ліцензії **GNU General Public License v2.0 / v3.0**.
+* Graniton є неофіційним модифікованим клієнтом і не афілійований з компанією Telegram FZ-LLC.
