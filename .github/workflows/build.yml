@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -118,8 +120,42 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :TMessagesProj_App:assembleAfatRelease --stacktrace
 
+      - name: Prepare Release APK
+        run: |
+          mkdir -p release-output
+          find TMessagesProj_App/build/outputs/apk/ -name "*.apk" -type f -exec cp {} release-output/Graniton-arm64-v8a.apk \;
+          echo "Found APK:"
+          ls -lh release-output/
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Graniton-release-apk
-          path: "**/*.apk"
+          path: "release-output/*.apk"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/master'
+        with:
+          tag_name: "v13.1.1-b${{ github.run_number }}"
+          name: "Graniton v13.1.1 (Build ${{ github.run_number }})"
+          body: |
+            ### 🔮 Graniton Release v13.1.1 (Build ${{ github.run_number }})
+            
+            **Custom Telegram client for Samsung Galaxy S26 Ultra**
+            
+            #### 🚀 Що нового та впроваджено:
+            - 🎨 **Брендинг Graniton**: унікальний `org.graniton.messenger` (встановлюється паралельно з офіційним Telegram).
+            - 🔮 **Dark Purple Energy Theme**: кастомна тема з палітрою `#0d0214` та неоновими акцентами `#8a2be2`.
+            - 📱 **One UI Adaptive Icon**: кастомна іконка під Samsung One UI з глибоким фіолетовим бекграундом `#0d0214`.
+            - 📸 **Galaxy S26 Ultra Media Boost**: вимкнено надмірне стиснення фото/відео при зйомці, білд виключно під `arm64-v8a`.
+            - 🛡️ **Privacy & Ghost Controls**:
+              - Знято блокування скриншотів (`FLAG_SECURE = 0`).
+              - Збереження зникаючих фото/відео з таймером у галерею.
+              - Вимкнено звіти про прочитання повідомлень.
+            - 🔑 **Чистий підпис**: власний RSA 2048-бітний Keystore (`graniton`).
+            
+            #### 📥 Встановлення:
+            1. Завантажте `Graniton-arm64-v8a.apk` нижче.
+            2. Відкрийте та встановіть (при запиті Play Protect натисніть *«Детальніше» ➔ «Все одно встановити»*).
+          files: release-output/Graniton-arm64-v8a.apk
