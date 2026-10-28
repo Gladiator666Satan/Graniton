@@ -32,6 +32,7 @@ jobs:
 
           # 3. Оптимізація під Galaxy S26 Ultra (тільки arm64-v8a: білд ~8-10 хв)
           sed -i 's/"armeabi-v7a", "arm64-v8a", "x86", "x86_64"/"arm64-v8a"/g' ./TMessagesProj_App/build.gradle
+          python3 -c "with open('./TMessagesProj/build.gradle', 'r') as f: c = f.read(); c = c.replace('defaultConfig {', 'defaultConfig {\n        ndk {\n            abiFilters \"arm64-v8a\"\n        }'); open('./TMessagesProj/build.gradle', 'w').write(c)"
           
           # 4. Копіювання Firebase google-services.json для модуля TMessagesProj_App
           if [ -f "./TMessagesProj/google-services.json" ]; then
@@ -45,10 +46,8 @@ jobs:
           pip3 install --break-system-packages pillow || sudo apt-get install -y python3-pil || true
           python3 generate_icons.py
 
-          # 6. Заміна логотипу в шапці головного екрана на текст "Graniton"
+          # 6. Заміна логотипу в шапці головного екрана на текст "Graniton" (безпечно без викривлення VectorDrawable)
           sed -i 's/ssb\.setSpan(new ImageSpan(logoDrawable)/ \/\/ ssb.setSpan(new ImageSpan(logoDrawable)/g' ./TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java
-          sed -i 's/getString(R\.string\.AppName)/"Graniton"/g' ./TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java
-          echo '<?xml version="1.0" encoding="utf-8"?><vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="1dp" android:height="1dp" android:viewportWidth="1" android:viewportHeight="1"></vector>' > ./TMessagesProj/src/main/res/drawable/telegram_logo_2.xml
 
       - name: Mod - Dark Purple Energy Theme
         run: |
