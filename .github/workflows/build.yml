@@ -40,45 +40,7 @@ jobs:
           fi
 
           # 5. Повноцінна заміна адаптивних та звичайних іконок для One UI (Galaxy S26 Ultra)
-          if [ -f "logo.png" ]; then
-            python3 - << 'EOF'
-          from PIL import Image
-          import io, os
-
-          with open("logo.png", "rb") as f:
-              data = f.read()
-
-          try:
-              img = Image.open(io.BytesIO(data))
-          except Exception:
-              img = Image.open(io.BytesIO(data[:33] + data[33+333:]))
-
-          target_size = 512
-          canvas = Image.new("RGBA", (target_size, target_size), (0, 0, 0, 0))
-          max_dim = int(target_size * 0.72)
-          scale = min(max_dim / img.width, max_dim / img.height)
-          new_w = int(img.width * scale)
-          new_h = int(img.height * scale)
-          resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-          pos_x = (target_size - new_w) // 2
-          pos_y = (target_size - new_h) // 2
-          canvas.paste(resized, (pos_x, pos_y), resized)
-          canvas.save("icon_foreground_gen.png")
-          print("Generated icon_foreground_gen.png successfully")
-          EOF
-
-            # Оновлюємо передній план адаптивної іконки у всіх mipmap папках
-            find ./TMessagesProj/src/main/res/ -name "icon_foreground*.png" -exec cp icon_foreground_gen.png {} \;
-            find ./TMessagesProj/src/main/res/ -name "ic_launcher*.png" -exec cp logo.png {} \;
-
-            # Оновлюємо колір фону адаптивної іконки на темний фіолетовий Dark Purple Energy (#0d0214)
-            echo '<?xml version="1.0" encoding="utf-8"?><shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#0d0214" /></shape>' > ./TMessagesProj/src/main/res/drawable/icon_background.xml
-            echo '<?xml version="1.0" encoding="utf-8"?><shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#0d0214" /></shape>' > ./TMessagesProj/src/main/res/drawable/icon_background_sa.xml
-
-            # Оновлюємо XML адаптивної іконки (без старого монохромного літачка)
-            echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@drawable/icon_background" /><foreground android:drawable="@mipmap/icon_foreground" /></adaptive-icon>' > ./TMessagesProj/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-            echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@drawable/icon_background" /><foreground android:drawable="@mipmap/icon_foreground" /></adaptive-icon>' > ./TMessagesProj/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-          fi
+          python3 generate_icons.py
 
       - name: Mod - Dark Purple Energy Theme
         run: |
