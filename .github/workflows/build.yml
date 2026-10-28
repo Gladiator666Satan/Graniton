@@ -46,8 +46,8 @@ jobs:
           pip3 install --break-system-packages pillow || sudo apt-get install -y python3-pil || true
           python3 generate_icons.py
 
-          # 6. Заміна логотипу в шапці головного екрана на текст "Graniton" (безпечно без викривлення VectorDrawable)
-          sed -i 's/ssb\.setSpan(new ImageSpan(logoDrawable)/ \/\/ ssb.setSpan(new ImageSpan(logoDrawable)/g' ./TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java
+          # 6. Перевірка наявності векторного логотипу Graniton (telegram_logo_2.xml)
+          ls -la ./TMessagesProj/src/main/res/drawable/telegram_logo_2.xml
 
       - name: Mod - Dark Purple Energy Theme
         run: |
