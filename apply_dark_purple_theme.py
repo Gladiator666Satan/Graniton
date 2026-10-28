@@ -2,52 +2,62 @@
 import os
 import glob
 
+def hex_to_int(h):
+    h = h.lstrip('#')
+    if len(h) == 6:
+        h = 'FF' + h
+    val = int(h, 16)
+    if val >= 0x80000000:
+        val -= 0x100000000
+    return val
+
 def update_attheme_files():
     assets_dir = "./TMessagesProj/src/main/assets"
     if not os.path.exists(assets_dir):
         print(f"Assets dir {assets_dir} not found")
         return
 
-    # Dark Purple Energy Palette
-    # Main Background: #0d0214 (-15924716)
-    # Elevated Cards / Headers: #1a0b2e (-15070418)
-    # Darkest contrast: #08000c (-16252916)
-    # BlueViolet Neon Accent: #8a2be2 (-7722014)
-    # Secondary Violet: #a855f7 (-5745161)
-    # Bubble Surface: #25113d (-14347963)
+    # Graniton Dark Violet Synergy Palette
     replacements = {
-        'windowBackgroundWhite': -15924716,          # #0d0214
-        'windowBackgroundGray': -16252916,           # #08000c
-        'dialogBackground': -15070418,               # #1a0b2e
-        'dialogBackgroundGray': -15924716,           # #0d0214
-        'actionBarDefault': -15070418,               # #1a0b2e
-        'actionBarDefaultArchived': -15070418,
-        'actionBarActionModeDefault': -15070418,
-        'actionBarDefaultSubmenuBackground': -15070418,
-        'chat_topPanelBackground': -15070418,
-        'chat_messagePanelBackground': -15070418,
-        'chat_emojiPanelBackground': -15070418,
-        'chat_wallpaper': -15924716,                 # #0d0214
-        'chat_inBubble': -14347963,                  # #25113d
-        'chat_inBubbleSelected': -13692080,          # #2f174e
-        'chat_outBubble': -7722014,                  # #8a2be2
-        'chat_outBubbleSelected': -6737938,          # #9932ee
-        'chat_outBubbleGradient': -5745161,          # #a855f7
-        'chats_actionBackground': -7722014,          # #8a2be2
-        'chats_actionPressedBackground': -8840248,   # #791fc8
-        'chats_unreadCounter': -7722014,             # #8a2be2
-        'windowBackgroundWhiteBlueText': -7722014,   # #8a2be2
-        'windowBackgroundWhiteBlueText2': -7722014,
-        'windowBackgroundWhiteBlueText4': -7722014,
-        'windowBackgroundWhiteBlueHeader': -5745161, # #a855f7
-        'dialogButton': -7722014,                    # #8a2be2
-        'dialogTextBlue': -7722014,
-        'switchTrackBlueChecked': -7722014,
-        'featuredStickers_addButton': -7722014,
-        'player_buttonActive': -7722014,
-        'chat_inVoiceSeekbarFill': -7722014,
-        'chats_nameMessage': -1,                     # white message text in list
-        'chats_menuTopBackgroundCats': -16252916     # #08000c
+        'windowBackgroundWhite': hex_to_int('FF0D0214'),          # #0d0214 Deep obsidian
+        'windowBackgroundGray': hex_to_int('FF08000C'),           # #08000c Contrast
+        'dialogBackground': hex_to_int('FF180B2B'),               # #180b2b Elevated card
+        'dialogBackgroundGray': hex_to_int('FF10051E'),
+        'actionBarDefault': hex_to_int('FF160926'),               # #160926 Elevated bar
+        'actionBarDefaultArchived': hex_to_int('FF160926'),
+        'actionBarActionModeDefault': hex_to_int('FF1F0E35'),
+        'actionBarDefaultSubmenuBackground': hex_to_int('FF1F0E35'),
+        'actionBarDefaultTitle': hex_to_int('FFFFFFFF'),
+        'actionBarDefaultIcon': hex_to_int('FFA855F7'),
+        'chat_topPanelBackground': hex_to_int('FF160926'),
+        'chat_messagePanelBackground': hex_to_int('FF160926'),
+        'chat_emojiPanelBackground': hex_to_int('FF160926'),
+        'chat_wallpaper': hex_to_int('FF0D0214'),
+        'chat_inBubble': hex_to_int('FF231238'),                  # #231238 Deep plum
+        'chat_inBubbleSelected': hex_to_int('FF341A52'),
+        'chat_outBubble': hex_to_int('FF7928CA'),                 # #7928ca Electric violet
+        'chat_outBubbleSelected': hex_to_int('FFA855F7'),
+        'chat_outBubbleGradient': hex_to_int('FF9333EA'),         # #9333ea Gradient
+        'chat_messageTextIn': hex_to_int('FFF3EEF8'),
+        'chat_messageTextOut': hex_to_int('FFFFFFFF'),
+        'chat_messageLinkIn': hex_to_int('FFC084FC'),
+        'chat_messageLinkOut': hex_to_int('FFE9D5FF'),            # Readable link distinct from text
+        'chats_actionBackground': hex_to_int('FF8B2BE2'),         # #8b2be2 Neon FAB
+        'chats_actionPressedBackground': hex_to_int('FF741ECC'),
+        'chats_unreadCounter': hex_to_int('FF8B2BE2'),
+        'windowBackgroundWhiteBlueText': hex_to_int('FF8B2BE2'),
+        'windowBackgroundWhiteBlueText2': hex_to_int('FF8B2BE2'),
+        'windowBackgroundWhiteBlueText4': hex_to_int('FF8B2BE2'),
+        'windowBackgroundWhiteBlueHeader': hex_to_int('FFA855F7'),
+        'dialogButton': hex_to_int('FF8B2BE2'),
+        'dialogTextBlue': hex_to_int('FF8B2BE2'),
+        'switchTrackBlueChecked': hex_to_int('FF8B2BE2'),
+        'featuredStickers_addButton': hex_to_int('FF8B2BE2'),
+        'player_buttonActive': hex_to_int('FF8B2BE2'),
+        'chat_inVoiceSeekbarFill': hex_to_int('FF8B2BE2'),
+        'chats_nameMessage': -1,
+        'chats_menuTopBackgroundCats': hex_to_int('FF08000C'),
+        'telegram_color_dialogsLogo': hex_to_int('FFFFFFFF')
     }
 
     attheme_files = glob.glob(os.path.join(assets_dir, "*.attheme"))
@@ -59,17 +69,24 @@ def update_attheme_files():
 
             lines = content.splitlines()
             new_lines = []
+            existing_keys = set()
             for line in lines:
                 if "=" in line:
                     key, val = line.split("=", 1)
+                    existing_keys.add(key)
                     if key in replacements:
                         new_lines.append(f"{key}={replacements[key]}")
                         continue
                 new_lines.append(line)
 
+            # Add missing crucial keys
+            for k, v in replacements.items():
+                if k not in existing_keys:
+                    new_lines.append(f"{k}={v}")
+
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(new_lines) + "\n")
-            print(f"Updated {os.path.basename(file_path)} with Dark Purple Energy palette.")
+            print(f"Updated {os.path.basename(file_path)} with Dark Violet palette.")
         except Exception as e:
             print(f"Error updating {file_path}: {e}")
 
@@ -83,16 +100,16 @@ def update_theme_colors_java():
         content = f.read()
 
     replacements = [
-        ("public static final int TELEGRAM_COLOR = 0xFF229AF0;", "public static final int TELEGRAM_COLOR = 0xFF8A2BE2;"),
-        ("public static final int TELEGRAM_COLOR_TEXT = 0xFF298ACF;", "public static final int TELEGRAM_COLOR_TEXT = 0xFF8A2BE2;"),
+        ("public static final int TELEGRAM_COLOR = 0xFF229AF0;", "public static final int TELEGRAM_COLOR = 0xFF8B2BE2;"),
+        ("public static final int TELEGRAM_COLOR_TEXT = 0xFF298ACF;", "public static final int TELEGRAM_COLOR_TEXT = 0xFF8B2BE2;"),
         ("defaultColors[key_windowBackgroundWhite] = 0xffffffff;", "defaultColors[key_windowBackgroundWhite] = 0xff0d0214;"),
         ("defaultColors[key_windowBackgroundGray] = 0xffF1F1F3;", "defaultColors[key_windowBackgroundGray] = 0xff08000c;"),
-        ("defaultColors[key_actionBarDefault] = 0xffffffff;", "defaultColors[key_actionBarDefault] = 0xff1a0b2e;"),
-        ("defaultColors[key_chats_actionBackground] = 0xff65a9e0;", "defaultColors[key_chats_actionBackground] = 0xff8a2be2;"),
+        ("defaultColors[key_actionBarDefault] = 0xffffffff;", "defaultColors[key_actionBarDefault] = 0xff160926;"),
+        ("defaultColors[key_chats_actionBackground] = 0xff65a9e0;", "defaultColors[key_chats_actionBackground] = 0xff8b2be2;"),
         ("defaultColors[key_windowBackgroundWhiteBlackText] = DEFAULT_BLACK_TEXT;", "defaultColors[key_windowBackgroundWhiteBlackText] = 0xffffffff;"),
         ("defaultColors[key_actionBarDefaultTitle] = DEFAULT_BLACK_TEXT;", "defaultColors[key_actionBarDefaultTitle] = 0xffffffff;"),
-        ("defaultColors[key_actionBarDefaultIcon] = DEFAULT_BLACK_TEXT;", "defaultColors[key_actionBarDefaultIcon] = 0xffffffff;"),
-        ("defaultColors[key_windowBackgroundWhiteGrayText] = 0xff808384;", "defaultColors[key_windowBackgroundWhiteGrayText] = 0xffa094b8;")
+        ("defaultColors[key_actionBarDefaultIcon] = DEFAULT_BLACK_TEXT;", "defaultColors[key_actionBarDefaultIcon] = 0xffa855f7;"),
+        ("defaultColors[key_windowBackgroundWhiteGrayText] = 0xff808384;", "defaultColors[key_windowBackgroundWhiteGrayText] = 0xff9e91b2;")
     ]
 
     for old, new in replacements:
@@ -133,11 +150,11 @@ def update_theme_java():
     print("Updated Theme.java successfully.")
 
 def main():
-    print("=== Applying Dark Purple Energy Theme to Graniton ===")
+    print("=== Applying Graniton Dark Violet Theme ===")
     update_attheme_files()
     update_theme_colors_java()
     update_theme_java()
-    print("=== Dark Purple Energy Theme applied successfully! ===")
+    print("=== Graniton Dark Violet Theme applied successfully! ===")
 
 if __name__ == "__main__":
     main()
