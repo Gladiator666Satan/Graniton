@@ -31,26 +31,7 @@ jobs:
           # 3. Оптимізація під Galaxy S26 Ultra (тільки arm64-v8a: білд ~8-10 хв)
           sed -i 's/"armeabi-v7a", "arm64-v8a", "x86", "x86_64"/"arm64-v8a"/g' ./TMessagesProj_App/build.gradle
           
-          # 4. Налаштування Firebase google-services.json для обох модулів (App та Library)
-          python3 -c '
-          import json, copy
-          path = "./TMessagesProj/google-services.json"
-          try:
-              with open(path) as f:
-                  data = json.load(f)
-              clients = data.get("client", [])
-              pkgs = {c["client_info"]["android_client_info"]["package_name"] for c in clients if "client_info" in c and "android_client_info" in c["client_info"]}
-              if "org.graniton.messenger" in pkgs and "org.telegram.messenger" not in pkgs:
-                  new_client = copy.deepcopy(clients[0])
-                  new_client["client_info"]["android_client_info"]["package_name"] = "org.telegram.messenger"
-                  clients.append(new_client)
-                  data["client"] = clients
-                  with open(path, "w") as f:
-                      json.dump(data, f, indent=2)
-                  print("Added org.telegram.messenger fallback to google-services.json")
-          except Exception as e:
-              print("google-services sync error:", e)
-          '
+          # 4. Копіювання Firebase google-services.json для модуля TMessagesProj_App
           if [ -f "./TMessagesProj/google-services.json" ]; then
             cp ./TMessagesProj/google-services.json ./TMessagesProj_App/google-services.json
             if [ -d "./TMessagesProj_AppHuawei" ]; then
@@ -60,31 +41,31 @@ jobs:
 
           # 5. Повноцінна заміна адаптивних та звичайних іконок для One UI (Galaxy S26 Ultra)
           if [ -f "logo.png" ]; then
-            python3 -c '
-            from PIL import Image
-            import io, os
+            python3 - << 'EOF'
+          from PIL import Image
+          import io, os
 
-            with open("logo.png", "rb") as f:
-                data = f.read()
+          with open("logo.png", "rb") as f:
+              data = f.read()
 
-            try:
-                img = Image.open(io.BytesIO(data))
-            except Exception:
-                img = Image.open(io.BytesIO(data[:33] + data[33+333:]))
+          try:
+              img = Image.open(io.BytesIO(data))
+          except Exception:
+              img = Image.open(io.BytesIO(data[:33] + data[33+333:]))
 
-            target_size = 512
-            canvas = Image.new("RGBA", (target_size, target_size), (0, 0, 0, 0))
-            max_dim = int(target_size * 0.72)
-            scale = min(max_dim / img.width, max_dim / img.height)
-            new_w = int(img.width * scale)
-            new_h = int(img.height * scale)
-            resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-            pos_x = (target_size - new_w) // 2
-            pos_y = (target_size - new_h) // 2
-            canvas.paste(resized, (pos_x, pos_y), resized)
-            canvas.save("icon_foreground_gen.png")
-            print("Generated icon_foreground_gen.png")
-            '
+          target_size = 512
+          canvas = Image.new("RGBA", (target_size, target_size), (0, 0, 0, 0))
+          max_dim = int(target_size * 0.72)
+          scale = min(max_dim / img.width, max_dim / img.height)
+          new_w = int(img.width * scale)
+          new_h = int(img.height * scale)
+          resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+          pos_x = (target_size - new_w) // 2
+          pos_y = (target_size - new_h) // 2
+          canvas.paste(resized, (pos_x, pos_y), resized)
+          canvas.save("icon_foreground_gen.png")
+          print("Generated icon_foreground_gen.png successfully")
+          EOF
 
             # Оновлюємо передній план адаптивної іконки у всіх mipmap папках
             find ./TMessagesProj/src/main/res/ -name "icon_foreground*.png" -exec cp icon_foreground_gen.png {} \;
