@@ -47,11 +47,8 @@ jobs:
 
       - name: Mod - Dark Purple Energy Theme
         run: |
-          # Впровадження палітри Dark Purple у Theme.java
-          find . -name "Theme.java" -type f -exec sed -i 's/0xff1c242c/0xff0d0214/g' {} +
-          find . -name "Theme.java" -type f -exec sed -i 's/0xff0f171e/0xff08000c/g' {} +
-          find . -name "Theme.java" -type f -exec sed -i 's/0xff212d3b/0xff1a0b2e/g' {} +
-          find . -name "Theme.java" -type f -exec sed -i 's/0xff5288c1/0xff8a2be2/g' {} +
+          # Впровадження повноцінної Dark Purple Energy палітри в код і тему
+          python3 apply_dark_purple_theme.py
 
       - name: Mod - Privacy & Secret Media Saving
         run: |
@@ -146,7 +143,7 @@ jobs:
             
             #### 🚀 Що нового та впроваджено:
             - 🎨 **Брендинг Graniton**: унікальний `org.graniton.messenger` (встановлюється паралельно з офіційним Telegram).
-            - 🔮 **Dark Purple Energy Theme**: кастомна тема з палітрою `#0d0214` та неоновими акцентами `#8a2be2`.
+            - 🔮 **Dark Purple Energy Theme**: повноцінна кастомна тема з палітрою `#0d0214` та неоновими акцентами `#8a2be2` за замовчуванням.
             - 📱 **One UI Adaptive Icon**: кастомна іконка під Samsung One UI з глибоким фіолетовим бекграундом `#0d0214`.
             - 📸 **Galaxy S26 Ultra Media Boost**: вимкнено надмірне стиснення фото/відео при зйомці, білд виключно під `arm64-v8a`.
             - 🛡️ **Privacy & Ghost Controls**:
