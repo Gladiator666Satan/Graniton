@@ -24,8 +24,8 @@ jobs:
 
       - name: Customize Branding (Graniton)
         run: |
-          # 1. Заміна назви додатка на Graniton
-          sed -i 's/<string name="AppName">Telegram<\/string>/<string name="AppName">Graniton<\/string>/g' ./TMessagesProj/src/main/res/values/strings.xml
+          # 1. Заміна назви додатка на Graniton в усіх локалізаціях
+          find ./TMessagesProj/src/main/res -name "strings.xml" -exec sed -i 's/<string name="AppName">Telegram<\/string>/<string name="AppName">Graniton<\/string>/g' {} +
           
           # 2. Зміна Application ID через gradle.properties (без пошкодження namespace Java-коду)
           sed -i 's/APP_PACKAGE=org.telegram.messenger/APP_PACKAGE=org.graniton.messenger/g' gradle.properties
@@ -44,6 +44,11 @@ jobs:
           # 5. Повноцінна заміна адаптивних та звичайних іконок для One UI (Galaxy S26 Ultra)
           pip3 install --break-system-packages pillow || sudo apt-get install -y python3-pil || true
           python3 generate_icons.py
+
+          # 6. Заміна логотипу в шапці головного екрана на текст "Graniton"
+          sed -i 's/ssb\.setSpan(new ImageSpan(logoDrawable)/ \/\/ ssb.setSpan(new ImageSpan(logoDrawable)/g' ./TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java
+          sed -i 's/getString(R\.string\.AppName)/"Graniton"/g' ./TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java
+          echo '<?xml version="1.0" encoding="utf-8"?><vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="1dp" android:height="1dp" android:viewportWidth="1" android:viewportHeight="1"></vector>' > ./TMessagesProj/src/main/res/drawable/telegram_logo_2.xml
 
       - name: Mod - Dark Purple Energy Theme
         run: |
@@ -81,19 +86,8 @@ jobs:
 
       - name: Generate Clean Keystore
         run: |
-          # Створення власного чистого 2048-біт RSA сертифіката для Graniton замість старого публічного ключа
-          rm -f ./TMessagesProj/config/release.keystore
-          keytool -genkeypair \
-            -v \
-            -keystore ./TMessagesProj/config/release.keystore \
-            -alias graniton \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass granitonpass \
-            -keypass granitonpass \
-            -dname "CN=Graniton, OU=Graniton Project, O=Graniton, L=Kyiv, ST=Kyiv, C=UA"
-          
+          # Відновлення постійного чистого RSA-ключа Graniton для повної сумісності оновлень
+          base64 -d ./TMessagesProj/config/release.keystore.b64 > ./TMessagesProj/config/release.keystore
           sed -i 's/RELEASE_KEY_PASSWORD=.*/RELEASE_KEY_PASSWORD=granitonpass/g' gradle.properties
           sed -i 's/RELEASE_KEY_ALIAS=.*/RELEASE_KEY_ALIAS=graniton/g' gradle.properties
           sed -i 's/RELEASE_STORE_PASSWORD=.*/RELEASE_STORE_PASSWORD=granitonpass/g' gradle.properties
@@ -142,6 +136,7 @@ jobs:
             **Custom Telegram client for Samsung Galaxy S26 Ultra**
             
             #### 🚀 Що нового та впроваджено:
+            - 🏷️ **Шапка чатів Graniton**: напис у шапці головного екрана змінено на "Graniton" замість логотипу Telegram.
             - 🎨 **Брендинг Graniton**: унікальний `org.graniton.messenger` (встановлюється паралельно з офіційним Telegram).
             - 🔮 **Dark Purple Energy Theme**: повноцінна кастомна тема з палітрою `#0d0214` та неоновими акцентами `#8a2be2` за замовчуванням.
             - 📱 **One UI Adaptive Icon**: кастомна іконка під Samsung One UI з глибоким фіолетовим бекграундом `#0d0214`.
@@ -150,7 +145,7 @@ jobs:
               - Знято блокування скриншотів (`FLAG_SECURE = 0`).
               - Збереження зникаючих фото/відео з таймером у галерею.
               - Вимкнено звіти про прочитання повідомлень.
-            - 🔑 **Чистий підпис**: власний RSA 2048-бітний Keystore (`graniton`).
+            - 🔑 **Постійний підпис**: зафіксовано постійний RSA 2048-бітний Keystore для безпроблемного оновлення поверх наявної версії.
             
             #### 📥 Встановлення:
             1. Завантажте `Graniton-arm64-v8a.apk` нижче.
