@@ -24,8 +24,8 @@ jobs:
 
       - name: Customize Branding (Graniton)
         run: |
-          # 1. Заміна назви додатка на Graniton в усіх локалізаціях
-          find ./TMessagesProj/src/main/res -name "strings.xml" -exec sed -i 's/<string name="AppName">Telegram<\/string>/<string name="AppName">Graniton<\/string>/g' {} +
+          # 1. Заміна назви додатка, заголовків сповіщень та системних імен на Graniton
+          python3 customize_branding.py
           
           # 2. Зміна Application ID через gradle.properties (без пошкодження namespace Java-коду)
           sed -i 's/APP_PACKAGE=org.telegram.messenger/APP_PACKAGE=org.graniton.messenger/g' gradle.properties
@@ -74,7 +74,7 @@ jobs:
 
       - name: Optimize Runner Memory
         run: |
-          # Адаптація виділення памʼяті JVM під GitHub Actions runner
+          # Адаптація виділення памʼязті JVM під GitHub Actions runner
           sed -i 's/-Xmx8g/-Xmx4g/g' gradle.properties
 
       - name: Set up JDK
@@ -135,7 +135,8 @@ jobs:
             **Custom Telegram client for Samsung Galaxy S26 Ultra**
             
             #### 🚀 Що нового та впроваджено:
-            - 🏷️ **Шапка чатів Graniton**: напис у шапці головного екрана змінено на "Graniton" замість логотипу Telegram.
+            - 🔔 **Фікс назви сповіщень (Graniton)**: усунено баг, через який сповіщення під час надходження чи на заблокованому екрані підписувались як «Telegram». Усі рядки заголовків сповіщень (NotificationHiddenName, NotificationHiddenChatName, SecretChatName) та системні заголовки One UI (android.substName) оновлено до Graniton.
+            - 🏷️ **Шапка чатів Graniton**: напис у шапці головного екрана змінено на векторний логотип "GRANITON" замість Telegram.
             - 🎨 **Брендинг Graniton**: унікальний `org.graniton.messenger` (встановлюється паралельно з офіційним Telegram).
             - 🔮 **Dark Purple Energy Theme**: повноцінна кастомна тема з палітрою `#0d0214` та неоновими акцентами `#8a2be2` за замовчуванням.
             - 📱 **One UI Adaptive Icon**: кастомна іконка під Samsung One UI з глибоким фіолетовим бекграундом `#0d0214`.
