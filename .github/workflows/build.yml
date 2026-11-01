@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - feature/power-pack
 
 jobs:
   build:
@@ -72,9 +73,13 @@ jobs:
           # 1. Максимальна якість камери та менше стиснення
           sed -i 's/int selectedCompression = 1;/int selectedCompression = 0;/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MediaController.java
 
+      - name: Mod - Power Pack (Ghost, Anti-Delete, HD 60fps, 120Hz, Premium Unlock)
+        run: |
+          python3 apply_power_pack.py
+
       - name: Optimize Runner Memory
         run: |
-          # Адаптація виділення памʼязті JVM під GitHub Actions runner
+          # Адаптація виділення памʼяті JVM під GitHub Actions runner
           sed -i 's/-Xmx8g/-Xmx4g/g' gradle.properties
 
       - name: Set up JDK
@@ -125,16 +130,22 @@ jobs:
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/feature/power-pack'
         with:
-          tag_name: "v13.1.1-b${{ github.run_number }}"
-          name: "Graniton v13.1.1 (Build ${{ github.run_number }})"
+          tag_name: "v13.1.1-powerpack-b${{ github.run_number }}"
+          name: "Graniton Power-Pack v13.1.1 (Build ${{ github.run_number }})"
           body: |
             ### 🔮 Graniton Release v13.1.1 (Build ${{ github.run_number }})
             
             **Custom Telegram client for Samsung Galaxy S26 Ultra**
             
-            #### 🚀 Що нового та впроваджено:
+            #### 🚀 Новий функціонал Power-Pack (feature/power-pack):
+            - 🎥 **HD 60fps кружечки (Video Notes)**: запис кружечків у 720×720 @ 60fps із підвищеним студійним бітрейтом (4.5 Мбіт/с).
+            - 🕵️ **True Ghost Mode (Режим «Привид»)**: вимкнено статус «друкує...», «записує голосове...».
+            - 🛡️ **Anti-Delete Protection**: ігнорування віддалених команд видалення — повідомлення залишаються у вас у чаті, навіть якщо їх видалили «для всіх».
+            - 🔓 **Bypass Restricted Content**: обхід `noforwards` — збереження медіа та копіювання з каналів із забороною пересилання.
+            - 👑 **Client-Side Premium Features**: кнопка розпізнавання голосових повідомлень (Voice-to-Text), онлайн-переклад чатів та відсутність реклами (Ad-Free).
+            - ⚡ **Force 120Hz Fluidity**: апаратне блокування максимальної частоти оновлення дисплея (120Hz) на Galaxy S26 Ultra.
             - 🔔 **Фікс назви сповіщень (Graniton)**: усунено баг, через який сповіщення під час надходження чи на заблокованому екрані підписувались як «Telegram». Усі рядки заголовків сповіщень (NotificationHiddenName, NotificationHiddenChatName, SecretChatName) та системні заголовки One UI (android.substName) оновлено до Graniton.
             - 🏷️ **Шапка чатів Graniton**: напис у шапці головного екрана змінено на векторний логотип "GRANITON" замість Telegram.
             - 🎨 **Брендинг Graniton**: унікальний `org.graniton.messenger` (встановлюється паралельно з офіційним Telegram).
