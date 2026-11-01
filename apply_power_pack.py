@@ -2,14 +2,13 @@
 """
 Graniton Power-Pack Mod Script
 - HD 60fps Round Video Notes (720p @ 60fps + 4.5Mbps bitrate)
-- True Ghost Mode (Disable typing, recording audio/video status)
+- True Ghost Mode (Disable sending typing, audio/video recording status)
 - Anti-Delete Protection (Ignore incoming remote message deletions)
-- Bypass Restricted Content (Save media and copy from noforwards channels)
-- Client-Side Premium Unlock (Voice-to-Text UI, real-time chat translation, no-ads)
+- Bypass Restricted Content (Save media, draw share button, and copy from noforwards channels)
+- Ad-Free (Block sponsored channel messages)
 - Force 120Hz Smooth Motion on Galaxy S26 Ultra
 """
 import os
-import re
 
 def patch_instant_camera_hd():
     path = "./TMessagesProj/src/main/java/org/telegram/ui/Components/InstantCameraView.java"
@@ -25,7 +24,12 @@ def patch_instant_camera_hd():
         content = content.replace("private static final int FRAME_RATE = 30;", "private static final int FRAME_RATE = 60;", 1)
         print("InstantCameraView: Set FRAME_RATE = 60")
 
-    # 2. Boost resolution to 720p and bitrate to 4.5Mbps
+    # 2. Boost edited info frame rate
+    if "videoEditedInfo.framerate = 25;" in content:
+        content = content.replace("videoEditedInfo.framerate = 25;", "videoEditedInfo.framerate = 60;")
+        print("InstantCameraView: Set videoEditedInfo.framerate = 60")
+
+    # 3. Boost resolution to 720p and bitrate to 4.5Mbps
     old_res = '''            int resolution = MessagesController.getInstance(currentAccount).roundVideoSize;
             int bitrate = MessagesController.getInstance(currentAccount).roundVideoBitrate * 1024;'''
     new_res = '''            int resolution = 720; // Graniton HD Round Video (720x720)
@@ -34,17 +38,19 @@ def patch_instant_camera_hd():
         content = content.replace(old_res, new_res, 1)
         print("InstantCameraView: Boosted resolution to 720p & bitrate to 4.5Mbps")
 
-    # 3. Boost videoEditedInfo result dimensions
+    # 4. Boost videoEditedInfo result dimensions and bitrate
     content = content.replace("videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = 360;", "videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = 720;")
     content = content.replace("videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = 360;", "videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = 720;")
     content = content.replace("videoEditedInfo.bitrate = 1000000;", "videoEditedInfo.bitrate = 4500000;")
+    print("InstantCameraView: Updated videoEditedInfo dimensions to 720x720 and 4.5Mbps")
 
-    # 4. Always allow big size camera
+    # 5. Always allow big size camera
     content = content.replace(
         "private boolean allowBigSizeCamera() {",
         "private boolean allowBigSizeCamera() { return true; } private boolean _unused_allowBigSizeCamera() {",
         1
     )
+    print("InstantCameraView: Always allow big size camera")
 
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
@@ -59,45 +65,67 @@ def patch_ghost_and_anti_delete():
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # 1. True Ghost Mode: Disable sending typing status
-    content = re.sub(
-        r'(public\s+void\s+sendTyping\s*\([^)]*\)\s*\{)',
-        r'\1 return; // Graniton Ghost Mode: Never leak typing/recording status',
-        content,
-        count=1
-    )
-    print("MessagesController: Enabled Ghost Mode (sendTyping disabled)")
+    # 1. Round video size & bitrate default
+    old_defaults = '''        roundVideoSize = mainPreferences.getInt("roundVideoSize", 384);
+        roundVideoBitrate = mainPreferences.getInt("roundVideoBitrate", 1000);'''
+    new_defaults = '''        roundVideoSize = mainPreferences.getInt("roundVideoSize", 720);
+        roundVideoBitrate = mainPreferences.getInt("roundVideoBitrate", 4500);'''
+    if old_defaults in content:
+        content = content.replace(old_defaults, new_defaults, 1)
+        print("MessagesController: Set default roundVideoSize=720, roundVideoBitrate=4500")
 
-    # 2. Anti-Delete: Ignore remote message deletion updates
-    content = content.replace(
-        "if (update instanceof TLRPC.TL_updateDeleteMessages)",
-        "if (false && update instanceof TLRPC.TL_updateDeleteMessages)"
-    )
-    content = content.replace(
-        "if (update instanceof TLRPC.TL_updateDeleteChannelMessages)",
-        "if (false && update instanceof TLRPC.TL_updateDeleteChannelMessages)"
-    )
-    content = content.replace(
-        "else if (update instanceof TLRPC.TL_updateDeleteMessages)",
-        "else if (false && update instanceof TLRPC.TL_updateDeleteMessages)"
-    )
-    content = content.replace(
-        "else if (update instanceof TLRPC.TL_updateDeleteChannelMessages)",
-        "else if (false && update instanceof TLRPC.TL_updateDeleteChannelMessages)"
-    )
+    # 2. True Ghost Mode: Disable sending typing status (valid Java method stubs)
+    old_typing1 = "public boolean sendTyping(long dialogId, long threadMsgId, int action, int classGuid) {"
+    new_typing1 = "public boolean sendTyping(long dialogId, long threadMsgId, int action, int classGuid) { return false; } public boolean _unused_sendTyping1(long dialogId, long threadMsgId, int action, int classGuid) {"
+    if old_typing1 in content:
+        content = content.replace(old_typing1, new_typing1, 1)
+
+    old_typing2 = "public boolean sendTyping(long dialogId, long threadMsgId, int action, String emojicon, int classGuid) {"
+    new_typing2 = "public boolean sendTyping(long dialogId, long threadMsgId, int action, String emojicon, int classGuid) { return false; } public boolean _unused_sendTyping2(long dialogId, long threadMsgId, int action, String emojicon, int classGuid) {"
+    if old_typing2 in content:
+        content = content.replace(old_typing2, new_typing2, 1)
+    print("MessagesController: Enabled Ghost Mode (sendTyping returns false)")
+
+    # 3. Anti-Delete: Ignore incoming message deletion updates
+    t1 = '''deletedMessages.put(0, arrayList);
+                }
+                arrayList.addAll(update.messages);'''
+    t1_rep = '''deletedMessages.put(0, arrayList);
+                }
+                // arrayList.addAll(update.messages); // Graniton Anti-Delete'''
+    if t1 in content:
+        content = content.replace(t1, t1_rep, 1)
+
+    t2 = '''deletedMessages.put(dialogId, arrayList);
+                }
+                arrayList.addAll(update.messages);'''
+    t2_rep = '''deletedMessages.put(dialogId, arrayList);
+                }
+                // arrayList.addAll(update.messages); // Graniton Anti-Delete'''
+    if t2 in content:
+        content = content.replace(t2, t2_rep, 1)
     print("MessagesController: Enabled Anti-Delete protection")
 
-    # 3. Bypass isPeerNoForwards and isChatNoForwards
-    content = re.sub(
-        r'(public\s+boolean\s+isPeerNoForwards\s*\([^)]*\)\s*\{)',
-        r'\1 return false; // Graniton Bypass',
-        content
-    )
-    content = re.sub(
-        r'(public\s+boolean\s+isChatNoForwards\s*\([^)]*\)\s*\{)',
-        r'\1 return false; // Graniton Bypass',
-        content
-    )
+    # 4. Bypass noforwards checks in MessagesController
+    chat_forwards = "public boolean isChatNoForwards(TLRPC.Chat chat) {"
+    chat_forwards_rep = "public boolean isChatNoForwards(TLRPC.Chat chat) { return false; } public boolean _unused_isChatNoForwardsChat(TLRPC.Chat chat) {"
+    if chat_forwards in content:
+        content = content.replace(chat_forwards, chat_forwards_rep, 1)
+
+    chat_forwards_id = "public boolean isChatNoForwards(long chatId) {"
+    chat_forwards_id_rep = "public boolean isChatNoForwards(long chatId) { return false; } public boolean _unused_isChatNoForwardsId(long chatId) {"
+    if chat_forwards_id in content:
+        content = content.replace(chat_forwards_id, chat_forwards_id_rep, 1)
+
+    peer_forwards = "public boolean isPeerNoForwards(long dialogId) {"
+    peer_forwards_rep = "public boolean isPeerNoForwards(long dialogId) { return false; } public boolean _unused_isPeerNoForwards(long dialogId) {"
+    if peer_forwards in content:
+        content = content.replace(peer_forwards, peer_forwards_rep, 1)
+
+    user_forwards = "public boolean isUserNoForwards(TLRPC.UserFull userFull) {"
+    user_forwards_rep = "public boolean isUserNoForwards(TLRPC.UserFull userFull) { return false; } public boolean _unused_isUserNoForwards(TLRPC.UserFull userFull) {"
+    if user_forwards in content:
+        content = content.replace(user_forwards, user_forwards_rep, 1)
     print("MessagesController: Bypassed isPeerNoForwards / isChatNoForwards")
 
     with open(path, "w", encoding="utf-8") as f:
@@ -123,7 +151,16 @@ def patch_message_restrictions():
         content = content.replace("hasCodeCopyButton = codeLength >= 75 && !noforwards;", "hasCodeCopyButton = codeLength >= 75;", 1)
         print("MessageObject: Unlocked code copy button")
 
-    # 3. Remove all sponsored ads (isSponsored = false)
+    # 3. Unlock share button in restricted channels
+    old_share = '''        } else if (messageOwner.noforwards) {
+            return false;'''
+    new_share = '''        } else if (messageOwner.noforwards) {
+            // Graniton: bypass noforwards to allow share button'''
+    if old_share in content:
+        content = content.replace(old_share, new_share, 1)
+        print("MessageObject: Unlocked share button for restricted messages")
+
+    # 4. Remove all sponsored ads (isSponsored = false)
     if "public boolean isSponsored() {" in content:
         content = content.replace(
             "public boolean isSponsored() {",
@@ -135,41 +172,6 @@ def patch_message_restrictions():
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
     print("Successfully patched MessageObject.java")
-
-def patch_user_config_premium():
-    path = "./TMessagesProj/src/main/java/org/telegram/messenger/UserConfig.java"
-    if not os.path.exists(path):
-        print(f"File {path} not found")
-        return
-
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    old_is_premium = '''    public boolean isPremium() {
-        TLRPC.User user = currentUser;
-        if (user == null) {
-            return false;
-        }
-        return user.premium;
-    }'''
-    new_is_premium = '''    public boolean isPremium() {
-        return true; // Graniton: Client-side Premium Features Unlocked
-    }
-    public boolean _real_isPremium() {
-        TLRPC.User user = currentUser;
-        if (user == null) {
-            return false;
-        }
-        return user.premium;
-    }'''
-
-    if old_is_premium in content:
-        content = content.replace(old_is_premium, new_is_premium, 1)
-        print("UserConfig: Unlocked client-side Premium features")
-
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-    print("Successfully patched UserConfig.java")
 
 def patch_force_120hz():
     path = "./TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java"
@@ -218,5 +220,4 @@ if __name__ == "__main__":
     patch_instant_camera_hd()
     patch_ghost_and_anti_delete()
     patch_message_restrictions()
-    patch_user_config_premium()
     patch_force_120hz()
