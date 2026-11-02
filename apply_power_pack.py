@@ -8,6 +8,7 @@ Graniton Power-Pack Mod Script
 - Ad-Free (Block sponsored channel messages)
 - Media Spoiler Fix (Ensure outgoing photo and video spoilers are properly transmitted to recipient via MTProto)
 - Force 120Hz Smooth Motion on Galaxy S26 Ultra
+- Secret / Expiring Media (Bombs / View-Once TTL) Saving & Screenshot Unblock
 """
 import os
 
@@ -347,9 +348,332 @@ def patch_force_120hz():
         f.write(content)
     print("Successfully patched LaunchActivity.java")
 
+def patch_secret_media_and_screenshots():
+    # 1. SecretMediaViewer.java
+    smv_path = "./TMessagesProj/src/main/java/org/telegram/ui/SecretMediaViewer.java"
+    if os.path.exists(smv_path):
+        with open(smv_path, "r", encoding="utf-8") as f:
+            smv = f.read()
+
+        # Disable FLAG_SECURE on windowLayoutParams
+        t1 = (
+            "        windowLayoutParams.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN |\n"
+            "                WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR |\n"
+            "                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |\n"
+            "                WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS;\n"
+            "        windowLayoutParams.flags |= WindowManager.LayoutParams.FLAG_SECURE;"
+        )
+        r1 = (
+            "        windowLayoutParams.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN |\n"
+            "                WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR |\n"
+            "                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |\n"
+            "                WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS;\n"
+            "        windowLayoutParams.flags &= ~WindowManager.LayoutParams.FLAG_SECURE; // Graniton: allow screenshots"
+        )
+        if t1 in smv:
+            smv = smv.replace(t1, r1, 1)
+            print("SecretMediaViewer: disabled FLAG_SECURE on window")
+
+        # Clear FLAG_SECURE in setParentActivity
+        t2 = "        parentActivity = activity;\n\n        scroller = new Scroller(activity);"
+        r2 = (
+            "        parentActivity = activity;\n"
+            "        if (parentActivity != null && parentActivity.getWindow() != null) {\n"
+            "            parentActivity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);\n"
+            "        }\n\n"
+            "        scroller = new Scroller(activity);"
+        )
+        if t2 in smv:
+            smv = smv.replace(t2, r2, 1)
+            print("SecretMediaViewer: clearFlags on parent activity")
+
+        # Add Save to Gallery button and shift countdown timer so they do not overlap
+        t3 = (
+            "        actionBar.setTitleRightMargin(dp(70));\n"
+            "        containerView.addView(actionBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));\n"
+            "        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {\n"
+            "            @Override\n"
+            "            public void onItemClick(int id) {\n"
+            "                if (id == -1) {\n"
+            "                    closePhoto(true, false);\n"
+            "                }\n"
+            "            }\n"
+            "        });\n\n"
+            "        secretHint = new HintView2(activity, HintView2.DIRECTION_TOP);\n"
+            "        secretHint.setJoint(1, -26);\n"
+            "        secretHint.setPadding(dp(8), dp(8), dp(8), dp(8));\n"
+            "        containerView.addView(secretHint, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 80, Gravity.TOP | Gravity.RIGHT, 0, 48, 0, 0));\n\n"
+            "        secretDeleteTimer = new SecretDeleteTimer(activity);\n"
+            "        containerView.addView(secretDeleteTimer, LayoutHelper.createFrame(119, 48, Gravity.TOP | Gravity.RIGHT, 0, 0, 0, 0));"
+        )
+        r3 = (
+            "        actionBar.setTitleRightMargin(dp(70));\n"
+            "        org.telegram.ui.ActionBar.ActionBarMenu menu = actionBar.createMenu();\n"
+            "        menu.addItem(1, R.drawable.msg_gallery);\n"
+            "        containerView.addView(actionBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));\n"
+            "        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {\n"
+            "            @Override\n"
+            "            public void onItemClick(int id) {\n"
+            "                if (id == -1) {\n"
+            "                    closePhoto(true, false);\n"
+            "                } else if (id == 1) {\n"
+            "                    saveCurrentSecretMedia();\n"
+            "                }\n"
+            "            }\n"
+            "        });\n\n"
+            "        secretHint = new HintView2(activity, HintView2.DIRECTION_TOP);\n"
+            "        secretHint.setJoint(1, -26);\n"
+            "        secretHint.setPadding(dp(8), dp(8), dp(8), dp(8));\n"
+            "        containerView.addView(secretHint, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 80, Gravity.TOP | Gravity.RIGHT, 0, 48, 0, 0));\n\n"
+            "        secretDeleteTimer = new SecretDeleteTimer(activity);\n"
+            "        containerView.addView(secretDeleteTimer, LayoutHelper.createFrame(119, 48, Gravity.TOP | Gravity.RIGHT, 0, 0, 56, 0));"
+        )
+        if t3 in smv:
+            smv = smv.replace(t3, r3, 1)
+            print("SecretMediaViewer: added Save to Gallery button")
+
+        # Disable auto-delete upon close
+        t4 = (
+            "        ignoreDelete = messageObject.messageOwner.ttl == 0x7FFFFFFF;\n"
+            "        this.onClose = onClose;"
+        )
+        r4 = (
+            "        ignoreDelete = true;\n"
+            "        this.onClose = null; // Graniton: prevent auto-deletion of secret/bomb media"
+        )
+        if t4 in smv:
+            smv = smv.replace(t4, r4, 1)
+            print("SecretMediaViewer: disabled auto-deletion")
+
+        # Inject saveCurrentSecretMedia method
+        save_method = """    private void saveCurrentSecretMedia() {
+        if (currentMessageObject == null || parentActivity == null) {
+            return;
+        }
+        File f = FileLoader.getInstance(currentAccount).getPathToMessage(currentMessageObject.messageOwner);
+        if (f == null || !f.exists()) {
+            TLRPC.Document doc = currentMessageObject.getDocument();
+            if (doc != null) {
+                f = FileLoader.getInstance(currentAccount).getPathToAttach(doc, false);
+                if (f == null || !f.exists()) {
+                    f = FileLoader.getInstance(currentAccount).getPathToAttach(doc, true);
+                }
+            }
+        }
+        if (f == null || !f.exists()) {
+            TLRPC.PhotoSize size = FileLoader.getClosestPhotoSizeWithSize(currentMessageObject.photoThumbs, AndroidUtilities.getPhotoSize());
+            if (size != null) {
+                f = FileLoader.getInstance(currentAccount).getPathToAttach(size, false);
+            }
+        }
+        if (f != null && f.exists()) {
+            final boolean isVideo = currentMessageObject.isVideo();
+            org.telegram.messenger.MediaController.saveFile(f.toString(), parentActivity, isVideo ? 1 : 0, null, null, uri -> {
+                if (containerView != null) {
+                    org.telegram.ui.Components.BulletinFactory.createSaveToGalleryBulletin(containerView, isVideo, 0xf9222222, 0xffffffff).show();
+                }
+            });
+        }
+    }
+"""
+        if "private void saveCurrentSecretMedia()" not in smv:
+            smv = smv.replace("public class SecretMediaViewer {", "public class SecretMediaViewer {\n" + save_method, 1)
+            print("SecretMediaViewer: injected saveCurrentSecretMedia method")
+
+        with open(smv_path, "w", encoding="utf-8") as f:
+            f.write(smv)
+        print("Successfully patched SecretMediaViewer.java")
+
+    # 2. FlagSecureReason.java
+    fsr_path = "./TMessagesProj/src/main/java/org/telegram/messenger/FlagSecureReason.java"
+    if os.path.exists(fsr_path):
+        with open(fsr_path, "r", encoding="utf-8") as f:
+            fsr = f.read()
+
+        t_fsr = """    private static void updateWindowSecure(Window window) {
+        if (window == null) {
+            return;
+        }
+
+        if (isSecuredNow(window)) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+            AndroidUtilities.logFlagSecure();
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+            AndroidUtilities.logFlagSecure();
+        }
+    }
+
+    public static boolean isSecuredNow(Window window) {
+        return currentSecureReasons != null && currentSecureReasons.get(window) != null;
+    }"""
+
+        r_fsr = """    private static void updateWindowSecure(Window window) {
+        if (window == null) {
+            return;
+        }
+        window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+    }
+
+    public static boolean isSecuredNow(Window window) {
+        return false;
+    }"""
+        if t_fsr in fsr:
+            fsr = fsr.replace(t_fsr, r_fsr, 1)
+            with open(fsr_path, "w", encoding="utf-8") as f:
+                f.write(fsr)
+            print("FlagSecureReason: permanently disabled window secure flag")
+
+    # 3. PhotoViewer.java
+    pv_path = "./TMessagesProj/src/main/java/org/telegram/ui/PhotoViewer.java"
+    if os.path.exists(pv_path):
+        with open(pv_path, "r", encoding="utf-8") as f:
+            pv = f.read()
+
+        t_pv = """            if (chatActivity != null && chatActivity.getCurrentEncryptedChat() != null ||
+                avatarsDialogId != 0 && MessagesController.getInstance(currentAccount).isPeerNoForwards(avatarsDialogId) ||
+                messageObject != null && (MessagesController.getInstance(currentAccount).isPeerNoForwards(messageObject.getDialogId()) ||
+                (messageObject.messageOwner != null && messageObject.messageOwner.noforwards)) || messageObject != null && messageObject.hasRevealedExtendedMedia() ||
+                isPageBlocksNoForwards(pageBlocksAdapter)
+            ) {
+                windowLayoutParams.flags |= WindowManager.LayoutParams.FLAG_SECURE;
+                AndroidUtilities.logFlagSecure();
+            } else {
+                windowLayoutParams.flags &=~ WindowManager.LayoutParams.FLAG_SECURE;
+                AndroidUtilities.logFlagSecure();
+            }"""
+
+        r_pv = """            windowLayoutParams.flags &= ~WindowManager.LayoutParams.FLAG_SECURE; // Graniton: always allow screenshots in PhotoViewer"""
+        if t_pv in pv:
+            pv = pv.replace(t_pv, r_pv, 1)
+            with open(pv_path, "w", encoding="utf-8") as f:
+                f.write(pv)
+            print("PhotoViewer: disabled FLAG_SECURE")
+
+    # 4. LaunchActivity.java
+    la_path = "./TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java"
+    if os.path.exists(la_path):
+        with open(la_path, "r", encoding="utf-8") as f:
+            la = f.read()
+
+        t_la = """        flagSecureReason = new FlagSecureReason(getWindow(), () -> SharedConfig.passcodeHash.length() > 0 && !SharedConfig.allowScreenCapture);
+        flagSecureReason.attach();"""
+        r_la = """        SharedConfig.allowScreenCapture = true;
+        flagSecureReason = new FlagSecureReason(getWindow(), () -> false);
+        flagSecureReason.attach();
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);"""
+        if t_la in la:
+            la = la.replace(t_la, r_la, 1)
+            with open(la_path, "w", encoding="utf-8") as f:
+                f.write(la)
+            print("LaunchActivity: cleared FLAG_SECURE on launch")
+
+    # 5. SharedConfig.java
+    sc_path = "./TMessagesProj/src/main/java/org/telegram/messenger/SharedConfig.java"
+    if os.path.exists(sc_path):
+        with open(sc_path, "r", encoding="utf-8") as f:
+            sc = f.read()
+
+        sc = sc.replace('allowScreenCapture = preferences.getBoolean("allowScreenCapture", false);', 'allowScreenCapture = preferences.getBoolean("allowScreenCapture", true);')
+        sc = sc.replace('allowScreenCapture = false;', 'allowScreenCapture = true;')
+        with open(sc_path, "w", encoding="utf-8") as f:
+            f.write(sc)
+        print("SharedConfig: set default allowScreenCapture = true")
+
+    # 6. ChatActivity.java (context menu Save to Gallery for secret/bomb media)
+    chat_path = "./TMessagesProj/src/main/java/org/telegram/ui/ChatActivity.java"
+    if os.path.exists(chat_path):
+        with open(chat_path, "r", encoding="utf-8") as f:
+            chat = f.read()
+
+        t_c1 = """                        if (selectedObject.isVideo()) {
+                            if (!selectedObject.needDrawBluredPreview()) {
+                                items.add(LocaleController.getString(R.string.SaveToGallery));
+                                options.add(OPTION_SAVE_TO_GALLERY);
+                                icons.add(R.drawable.msg_gallery);
+                                items.add(LocaleController.getString(R.string.ShareFile));
+                                options.add(OPTION_SHARE);
+                                icons.add(R.drawable.msg_shareout);
+                            }"""
+        r_c1 = """                        if (selectedObject.isVideo()) {
+                            if (true) { // Graniton: allow saving secret/bomb video
+                                items.add(LocaleController.getString(R.string.SaveToGallery));
+                                options.add(OPTION_SAVE_TO_GALLERY);
+                                icons.add(R.drawable.msg_gallery);
+                                items.add(LocaleController.getString(R.string.ShareFile));
+                                options.add(OPTION_SHARE);
+                                icons.add(R.drawable.msg_shareout);
+                            }"""
+        if t_c1 in chat:
+            chat = chat.replace(t_c1, r_c1, 1)
+            print("ChatActivity: allowed Save to Gallery for secret videos")
+
+        t_c2 = """                        } else {
+                            if (!selectedObject.needDrawBluredPreview()) {
+                                items.add(LocaleController.getString(R.string.SaveToGallery));
+                                options.add(OPTION_SAVE_TO_GALLERY);
+                                icons.add(R.drawable.msg_gallery);
+                            }
+                        }"""
+        r_c2 = """                        } else {
+                            if (true) { // Graniton: allow saving secret/bomb photos
+                                items.add(LocaleController.getString(R.string.SaveToGallery));
+                                options.add(OPTION_SAVE_TO_GALLERY);
+                                icons.add(R.drawable.msg_gallery);
+                            }
+                        }"""
+        if t_c2 in chat:
+            chat = chat.replace(t_c2, r_c2, 1)
+            print("ChatActivity: allowed Save to Gallery for secret photos")
+
+        t_c3 = """                } else if (type == 6 && !noforwardsOrPaidMedia && !selectedObject.hasRevealedExtendedMedia()) {
+                    if (!selectedObject.needDrawBluredPreview() && !selectedObject.isVoiceOnce() && !selectedObject.isRoundOnce()) {"""
+        r_c3 = """                } else if (type == 6 && !noforwardsOrPaidMedia && !selectedObject.hasRevealedExtendedMedia()) {
+                    if (true) { // Graniton: allow saving type 6 secret media"""
+        if t_c3 in chat:
+            chat = chat.replace(t_c3, r_c3, 1)
+            print("ChatActivity: allowed Save to Gallery for type 6 media")
+
+        with open(chat_path, "w", encoding="utf-8") as f:
+            f.write(chat)
+
+    # 7. MessageObject.java (view once replay & forward)
+    mo_path = "./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java"
+    if os.path.exists(mo_path):
+        with open(mo_path, "r", encoding="utf-8") as f:
+            mo = f.read()
+
+        t_vo = """    public boolean isVoiceOnce() {
+        return isVoice() && messageOwner != null && messageOwner.media != null && messageOwner.media.ttl_seconds == 0x7FFFFFFF;
+    }
+
+    public boolean isRoundOnce() {
+        return isRoundVideo() && messageOwner != null && messageOwner.media != null && messageOwner.media.ttl_seconds == 0x7FFFFFFF;
+    }"""
+        r_vo = """    public boolean isVoiceOnce() {
+        return false; // Graniton: allow replay and saving of view-once voice messages
+    }
+
+    public boolean isRoundOnce() {
+        return false; // Graniton: allow replay and saving of view-once round video notes
+    }"""
+        if t_vo in mo:
+            mo = mo.replace(t_vo, r_vo, 1)
+            print("MessageObject: bypassed isVoiceOnce / isRoundOnce")
+
+        t_fwd = "!needDrawBluredPreview() && !isLiveLocation()"
+        r_fwd = "true && !isLiveLocation() /* Graniton: allow forwarding bomb media */"
+        if t_fwd in mo:
+            mo = mo.replace(t_fwd, r_fwd, 1)
+            print("MessageObject: unlocked forwarding for bomb media")
+
+        with open(mo_path, "w", encoding="utf-8") as f:
+            f.write(mo)
+
 if __name__ == "__main__":
     patch_instant_camera_hd()
     patch_ghost_and_anti_delete()
     patch_message_restrictions()
     patch_media_spoilers()
     patch_force_120hz()
+    patch_secret_media_and_screenshots()

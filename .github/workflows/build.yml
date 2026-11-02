@@ -61,12 +61,8 @@ jobs:
           sed -i 's/MessagesController.getInstance(currentAccount).markMentionsAsRead/ \/\/ markMentionsAsRead/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java
           
           # 2. Безпечне зняття заборони на збереження зникаючих медіа в MessageObject
-          sed -i 's/mediaTtl > 0/mediaTtl == -1/g' ./TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java
           sed -i 's/public boolean isSecretMedia() {/public boolean isSecretMedia() { return false; } public boolean _unused_isSecretMedia() {/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
           sed -i 's/public static boolean isSecretMedia(TLRPC.Message message) {/public static boolean isSecretMedia(TLRPC.Message message) { return false; } public static boolean _unused_static_isSecretMedia(TLRPC.Message message) {/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
-          
-          # 3. Безпечне вимкнення FLAG_SECURE
-          find . -name "*.java" -type f -exec sed -i 's/WindowManager\.LayoutParams\\.FLAG_SECURE/0/g' {} +
 
       - name: Mod - Interface Clean & Media Boost
         run: |
@@ -141,6 +137,7 @@ jobs:
             
             #### 🚀 Новий функціонал Power-Pack (feature/power-pack):
             - 🎥 **HD 60fps кружечки (Video Notes)**: запис нативних круглих повідомлень 384×384 @ 60fps зі студійним бітрейтом 2.5 Мбіт/с.
+            - 💣 **Збереження та скриншоти «бомбочок» (View-Once / TTL)**: знято всі обмеження на збереження та скриншоти зникаючих фото/відео, додано кнопку в галерею, вимкнено автовидалення.
             - 🙈 **Фікс спойлерів на медіа**: гарантована доставка прапорця спойлера (hasMediaSpoilers) на сервери MTProto для фото та відео (отримувач бачить медіа розмитим).
             - 🔒 **Ребрендування біометрії та екрана блокування**: динамічний перехоплювач LocaleController замінює всі форми назви Telegram на Graniton у діалогах блокування та відбитка пальця.
             - 🤖 **Брендування сервісних чатів**: системні сповіщення підписані як Graniton Notifications та Graniton Support.
