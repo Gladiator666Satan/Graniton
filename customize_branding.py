@@ -159,6 +159,36 @@ def patch_locale_controller():
 
     replacement = """    public static String applyGranitonBranding(String value) {
         if (value == null) return null;
+        if (value.contains("Телеграму")) {
+            value = value.replace("Телеграму", "Graniton");
+        }
+        if (value.contains("Телеграма")) {
+            value = value.replace("Телеграма", "Graniton");
+        }
+        if (value.contains("Телеграмі")) {
+            value = value.replace("Телеграмі", "Graniton");
+        }
+        if (value.contains("Телеграме")) {
+            value = value.replace("Телеграме", "Graniton");
+        }
+        if (value.contains("Телеграмом")) {
+            value = value.replace("Телеграмом", "Graniton");
+        }
+        if (value.contains("телеграму")) {
+            value = value.replace("телеграму", "graniton");
+        }
+        if (value.contains("телеграма")) {
+            value = value.replace("телеграма", "graniton");
+        }
+        if (value.contains("телеграмі")) {
+            value = value.replace("телеграмі", "graniton");
+        }
+        if (value.contains("телеграме")) {
+            value = value.replace("телеграме", "graniton");
+        }
+        if (value.contains("телеграмом")) {
+            value = value.replace("телеграмом", "graniton");
+        }
         if (value.contains("Telegram")) {
             value = value.replace("Telegram", "Graniton");
         }
@@ -208,7 +238,7 @@ def patch_locale_controller():
 
     if target in content:
         content = content.replace(target, replacement, 1)
-        print("Patched LocaleController.java (dynamic Graniton UI branding)")
+        print("Patched LocaleController.java (dynamic Graniton UI branding with inflections)")
     else:
         print("WARNING: target not found in LocaleController.java")
 
@@ -216,7 +246,91 @@ def patch_locale_controller():
         f.write(content)
     print("Successfully updated LocaleController.java")
 
+def patch_user_object():
+    path = "./TMessagesProj/src/main/java/org/telegram/messenger/UserObject.java"
+    if not os.path.exists(path):
+        print(f"File {path} not found")
+        return
+
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    target = """    @NonNull
+    public static String getUserName(TLRPC.User user) {
+        if (user == null || isDeleted(user)) {
+            return LocaleController.getString(R.string.HiddenName);
+        }"""
+
+    replacement = """    @NonNull
+    public static String getUserName(TLRPC.User user) {
+        if (user == null || isDeleted(user)) {
+            return LocaleController.getString(R.string.HiddenName);
+        }
+        if (user.id == 777000L) {
+            return "Graniton Notifications";
+        }
+        if (user.id == 333000L) {
+            return "Graniton Support";
+        }"""
+
+    if target in content:
+        content = content.replace(target, replacement, 1)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        print("Patched UserObject.java (Graniton system user branding)")
+    else:
+        print("WARNING: target not found in UserObject.java")
+
+def patch_support_users():
+    path = "./TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java"
+    if not os.path.exists(path):
+        print(f"File {path} not found")
+        return
+
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    target = """        user.phone = "333";
+        user.id = 333000;
+        user.first_name = "Telegram";
+        user.last_name = "";
+        user.status = null;
+        user.photo = new TLRPC.TL_userProfilePhotoEmpty();
+        putUser(user, true);
+
+        user = new TLRPC.TL_userForeign_old2();
+        user.phone = "42777";
+        user.id = 777000;
+        user.verified = true;
+        user.first_name = "Telegram";
+        user.last_name = "Notifications";"""
+
+    replacement = """        user.phone = "333";
+        user.id = 333000;
+        user.first_name = "Graniton";
+        user.last_name = "Support";
+        user.status = null;
+        user.photo = new TLRPC.TL_userProfilePhotoEmpty();
+        putUser(user, true);
+
+        user = new TLRPC.TL_userForeign_old2();
+        user.phone = "42777";
+        user.id = 777000;
+        user.verified = true;
+        user.first_name = "Graniton";
+        user.last_name = "Notifications";"""
+
+    if target in content:
+        content = content.replace(target, replacement, 1)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        print("Patched MessagesController.java (addSupportUser Graniton branding)")
+    else:
+        print("WARNING: target not found in MessagesController.java for addSupportUser")
+
 if __name__ == "__main__":
     patch_strings()
     patch_notifications_controller()
     patch_locale_controller()
+    patch_user_object()
+    patch_support_users()

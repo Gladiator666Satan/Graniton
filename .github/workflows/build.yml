@@ -90,7 +90,7 @@ jobs:
 
       - name: Generate Clean Keystore
         run: |
-          # Відновлення постійного чистого RSA-ключа Graniton для повної сумісності оновлень
+          # Створення стабільного release keystore із зафіксованими креденшелами
           base64 -d ./TMessagesProj/config/release.keystore.b64 > ./TMessagesProj/config/release.keystore
           sed -i 's/RELEASE_KEY_PASSWORD=.*/RELEASE_KEY_PASSWORD=granitonpass/g' gradle.properties
           sed -i 's/RELEASE_KEY_ALIAS=.*/RELEASE_KEY_ALIAS=graniton/g' gradle.properties
@@ -140,7 +140,10 @@ jobs:
             **Custom Telegram client for Samsung Galaxy S26 Ultra**
             
             #### 🚀 Новий функціонал Power-Pack (feature/power-pack):
-            - 🎥 **HD 60fps кружечки (Video Notes)**: запис кружечків у 720×720 @ 60fps із підвищеним студійним бітрейтом (4.5 Мбіт/с).
+            - 🎥 **HD 60fps кружечки (Video Notes)**: запис нативних круглих повідомлень 384×384 @ 60fps зі студійним бітрейтом 2.5 Мбіт/с.
+            - 🙈 **Фікс спойлерів на медіа**: гарантована доставка прапорця спойлера (hasMediaSpoilers) на сервери MTProto для фото та відео (отримувач бачить медіа розмитим).
+            - 🔒 **Ребрендування біометрії та екрана блокування**: динамічний перехоплювач LocaleController замінює всі форми назви Telegram на Graniton у діалогах блокування та відбитка пальця.
+            - 🤖 **Брендування сервісних чатів**: системні сповіщення підписані як Graniton Notifications та Graniton Support.
             - 🕵️ **True Ghost Mode (Режим «Привид»)**: вимкнено статус «друкує...», «записує голосове...».
             - 🛡️ **Anti-Delete Protection**: ігнорування віддалених команд видалення — повідомлення залишаються у вас у чаті, навіть якщо їх видалили «для всіх».
             - 🔓 **Bypass Restricted Content**: обхід `noforwards` — збереження медіа та копіювання з каналів із забороною пересилання.
