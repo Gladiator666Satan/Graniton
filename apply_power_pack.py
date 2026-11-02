@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Graniton Power-Pack Mod Script
-- HD 60fps Round Video Notes (720p @ 60fps + 4.5Mbps bitrate)
+- HD 60fps Round Video Notes (Preserve 384x384 circular video message format, 60fps framerate, 2.5Mbps studio bitrate)
 - True Ghost Mode (Disable sending typing, audio/video recording status)
 - Anti-Delete Protection (Ignore incoming remote message deletions)
 - Bypass Restricted Content (Save media, draw share button, and copy from noforwards channels)
 - Ad-Free (Block sponsored channel messages)
+- Media Spoiler Fix (Ensure outgoing photo and video spoilers are properly transmitted to recipient via MTProto)
 - Force 120Hz Smooth Motion on Galaxy S26 Ultra
 """
 import os
@@ -29,20 +30,17 @@ def patch_instant_camera_hd():
         content = content.replace("videoEditedInfo.framerate = 25;", "videoEditedInfo.framerate = 60;")
         print("InstantCameraView: Set videoEditedInfo.framerate = 60")
 
-    # 3. Boost resolution to 720p and bitrate to 4.5Mbps
+    # 3. Boost bitrate to 2.5Mbps (Keep diameter at 384 so server accepts round_message: true)
     old_res = '''            int resolution = MessagesController.getInstance(currentAccount).roundVideoSize;
             int bitrate = MessagesController.getInstance(currentAccount).roundVideoBitrate * 1024;'''
-    new_res = '''            int resolution = 720; // Graniton HD Round Video (720x720)
-            int bitrate = 4500000; // 4.5 Mbps Studio Bitrate'''
+    new_res = '''            int resolution = MessagesController.getInstance(currentAccount).roundVideoSize; // 384 server-compliant circular diameter
+            int bitrate = 2500000; // 2.5 Mbps High Studio Bitrate'''
     if old_res in content:
         content = content.replace(old_res, new_res, 1)
-        print("InstantCameraView: Boosted resolution to 720p & bitrate to 4.5Mbps")
+        print("InstantCameraView: Boosted bitrate to 2.5Mbps")
 
-    # 4. Boost videoEditedInfo result dimensions and bitrate
-    content = content.replace("videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = 360;", "videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = 720;")
-    content = content.replace("videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = 360;", "videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = 720;")
-    content = content.replace("videoEditedInfo.bitrate = 1000000;", "videoEditedInfo.bitrate = 4500000;")
-    print("InstantCameraView: Updated videoEditedInfo dimensions to 720x720 and 4.5Mbps")
+    # 4. Boost videoEditedInfo bitrate
+    content = content.replace("videoEditedInfo.bitrate = 1000000;", "videoEditedInfo.bitrate = 2500000;")
 
     # 5. Always allow big size camera
     content = content.replace(
@@ -65,14 +63,14 @@ def patch_ghost_and_anti_delete():
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # 1. Round video size & bitrate default
+    # 1. Round video size (384 native diameter) & bitrate default (2500)
     old_defaults = '''        roundVideoSize = mainPreferences.getInt("roundVideoSize", 384);
         roundVideoBitrate = mainPreferences.getInt("roundVideoBitrate", 1000);'''
-    new_defaults = '''        roundVideoSize = mainPreferences.getInt("roundVideoSize", 720);
-        roundVideoBitrate = mainPreferences.getInt("roundVideoBitrate", 4500);'''
+    new_defaults = '''        roundVideoSize = mainPreferences.getInt("roundVideoSize", 384);
+        roundVideoBitrate = mainPreferences.getInt("roundVideoBitrate", 2500);'''
     if old_defaults in content:
         content = content.replace(old_defaults, new_defaults, 1)
-        print("MessagesController: Set default roundVideoSize=720, roundVideoBitrate=4500")
+        print("MessagesController: Set default roundVideoSize=384, roundVideoBitrate=2500")
 
     # 2. True Ghost Mode: Disable sending typing status (valid Java method stubs)
     old_typing1 = "public boolean sendTyping(long dialogId, long threadMsgId, int action, int classGuid) {"
@@ -173,6 +171,139 @@ def patch_message_restrictions():
         f.write(content)
     print("Successfully patched MessageObject.java")
 
+def patch_media_spoilers():
+    # 1. SendMessagesHelper.java
+    smh_path = "./TMessagesProj/src/main/java/org/telegram/messenger/SendMessagesHelper.java"
+    if os.path.exists(smh_path):
+        with open(smh_path, "r", encoding="utf-8") as f:
+            smh = f.read()
+
+        smh_target = """    @UiThread
+    public static void prepareSendingPhoto(AccountInstance accountInstance, String imageFilePath, String thumbFilePath, Uri imageUri, long dialogId, MessageObject replyToMsg, MessageObject replyToTopMsg, TL_stories.StoryItem storyItem, ChatActivity.ReplyQuote quote, ArrayList<TLRPC.MessageEntity> entities, ArrayList<TLRPC.InputDocument> stickers, InputContentInfoCompat inputContent, int ttl, MessageObject editingMessageObject, VideoEditedInfo videoEditedInfo, boolean notify, int scheduleDate, int scheduleRepeatPeriod, int mode, boolean forceDocument, CharSequence caption, SendMessageChatArguments sendMessageChatArguments, long effectId, long payStars, long monoForumPeerId, MessageSuggestionParams suggestionParams) {
+        SendingMediaInfo info = new SendingMediaInfo();
+        info.path = imageFilePath;
+        info.thumbPath = thumbFilePath;
+        info.uri = imageUri;
+        if (caption != null) {
+            info.caption = caption.toString();
+        }
+        info.entities = entities;
+        info.ttl = ttl;
+        if (stickers != null) {
+            info.masks = new ArrayList<>(stickers);
+        }
+        info.videoEditedInfo = videoEditedInfo;
+        ArrayList<SendingMediaInfo> infos = new ArrayList<>();
+        infos.add(info);
+        prepareSendingMedia(accountInstance, infos, dialogId, replyToMsg, replyToTopMsg, null, quote, forceDocument, false, editingMessageObject, notify, scheduleDate, 0, mode, false, inputContent, sendMessageChatArguments, effectId, false, payStars, monoForumPeerId, suggestionParams);
+    }"""
+
+        smh_replacement = """    @UiThread
+    public static void prepareSendingPhoto(AccountInstance accountInstance, String imageFilePath, String thumbFilePath, Uri imageUri, long dialogId, MessageObject replyToMsg, MessageObject replyToTopMsg, TL_stories.StoryItem storyItem, ChatActivity.ReplyQuote quote, ArrayList<TLRPC.MessageEntity> entities, ArrayList<TLRPC.InputDocument> stickers, InputContentInfoCompat inputContent, int ttl, MessageObject editingMessageObject, VideoEditedInfo videoEditedInfo, boolean notify, int scheduleDate, int scheduleRepeatPeriod, int mode, boolean forceDocument, CharSequence caption, SendMessageChatArguments sendMessageChatArguments, long effectId, long payStars, long monoForumPeerId, MessageSuggestionParams suggestionParams) {
+        prepareSendingPhoto(accountInstance, imageFilePath, thumbFilePath, imageUri, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, entities, stickers, inputContent, ttl, editingMessageObject, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, mode, forceDocument, caption, sendMessageChatArguments, effectId, payStars, monoForumPeerId, suggestionParams, false);
+    }
+
+    @UiThread
+    public static void prepareSendingPhoto(AccountInstance accountInstance, String imageFilePath, String thumbFilePath, Uri imageUri, long dialogId, MessageObject replyToMsg, MessageObject replyToTopMsg, TL_stories.StoryItem storyItem, ChatActivity.ReplyQuote quote, ArrayList<TLRPC.MessageEntity> entities, ArrayList<TLRPC.InputDocument> stickers, InputContentInfoCompat inputContent, int ttl, MessageObject editingMessageObject, VideoEditedInfo videoEditedInfo, boolean notify, int scheduleDate, int scheduleRepeatPeriod, int mode, boolean forceDocument, CharSequence caption, SendMessageChatArguments sendMessageChatArguments, long effectId, long payStars, long monoForumPeerId, MessageSuggestionParams suggestionParams, boolean hasMediaSpoilers) {
+        SendingMediaInfo info = new SendingMediaInfo();
+        info.path = imageFilePath;
+        info.thumbPath = thumbFilePath;
+        info.uri = imageUri;
+        if (caption != null) {
+            info.caption = caption.toString();
+        }
+        info.entities = entities;
+        info.ttl = ttl;
+        if (stickers != null) {
+            info.masks = new ArrayList<>(stickers);
+        }
+        info.videoEditedInfo = videoEditedInfo;
+        info.hasMediaSpoilers = hasMediaSpoilers;
+        ArrayList<SendingMediaInfo> infos = new ArrayList<>();
+        infos.add(info);
+        prepareSendingMedia(accountInstance, infos, dialogId, replyToMsg, replyToTopMsg, null, quote, forceDocument, false, editingMessageObject, notify, scheduleDate, 0, mode, false, inputContent, sendMessageChatArguments, effectId, false, payStars, monoForumPeerId, suggestionParams);
+    }"""
+
+        if smh_target in smh:
+            smh = smh.replace(smh_target, smh_replacement, 1)
+            with open(smh_path, "w", encoding="utf-8") as f:
+                f.write(smh)
+            print("SendMessagesHelper: Added hasMediaSpoilers to prepareSendingPhoto")
+        else:
+            print("WARNING: smh_target not found in SendMessagesHelper.java")
+
+    # 2. ChatActivity.java
+    chat_path = "./TMessagesProj/src/main/java/org/telegram/ui/ChatActivity.java"
+    if os.path.exists(chat_path):
+        with open(chat_path, "r", encoding="utf-8") as f:
+            chat = f.read()
+
+        target_group = """                info.canDeleteAfter = entry.canDeleteAfter;
+                info.highQuality = entry.isHighQuality();
+                photos.add(info);"""
+        rep_group = """                info.canDeleteAfter = entry.canDeleteAfter;
+                info.highQuality = entry.isHighQuality();
+                info.hasMediaSpoilers = entry.hasSpoiler;
+                photos.add(info);"""
+        if target_group in chat:
+            chat = chat.replace(target_group, rep_group, 1)
+            print("ChatActivity: Enabled spoiler flag in sendPhotosGroup")
+
+        target_edit = """                    if (photoEntry.imagePath != null) {
+                        SendMessagesHelper.prepareSendingPhoto(getAccountInstance(), photoEntry.imagePath, photoEntry.thumbPath, null, dialog_id, editingMessageObject, getThreadMessage(), null, replyingQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, null, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, getMessageChatSendParams(), photoEntry.effectId, payStars, getSendMonoForumPeerId(), params);
+                    } else if (photoEntry.path != null) {
+                        SendMessagesHelper.prepareSendingPhoto(getAccountInstance(), photoEntry.path, photoEntry.thumbPath, null, dialog_id, editingMessageObject, getThreadMessage(), null, replyingQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, null, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, getMessageChatSendParams(), photoEntry.effectId, payStars, getSendMonoForumPeerId(), params);
+                    }"""
+        rep_edit = """                    if (photoEntry.imagePath != null) {
+                        SendMessagesHelper.prepareSendingPhoto(getAccountInstance(), photoEntry.imagePath, photoEntry.thumbPath, null, dialog_id, editingMessageObject, getThreadMessage(), null, replyingQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, null, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, getMessageChatSendParams(), photoEntry.effectId, payStars, getSendMonoForumPeerId(), params, photoEntry.hasSpoiler);
+                    } else if (photoEntry.path != null) {
+                        SendMessagesHelper.prepareSendingPhoto(getAccountInstance(), photoEntry.path, photoEntry.thumbPath, null, dialog_id, editingMessageObject, getThreadMessage(), null, replyingQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, null, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, getMessageChatSendParams(), photoEntry.effectId, payStars, getSendMonoForumPeerId(), params, photoEntry.hasSpoiler);
+                    }"""
+        if target_edit in chat:
+            chat = chat.replace(target_edit, rep_edit, 1)
+            print("ChatActivity: Enabled spoiler in sendMedia (editing)")
+
+        target_norm = """                    if (photoEntry.imagePath != null) {
+                        SendMessagesHelper.prepareSendingPhoto(getAccountInstance(), photoEntry.imagePath, photoEntry.thumbPath, null, dialog_id, replyingMessageObject, getThreadMessage(), null, replyingQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, editingMessageObject, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, getMessageChatSendParams(), photoEntry.effectId, payStars, getSendMonoForumPeerId(), getSendMessageSuggestionParams());
+                    } else if (photoEntry.path != null) {
+                        SendMessagesHelper.prepareSendingPhoto(getAccountInstance(), photoEntry.path, photoEntry.thumbPath, null, dialog_id, replyingMessageObject, getThreadMessage(), null, replyingQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, editingMessageObject, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, getMessageChatSendParams(), photoEntry.effectId, payStars, getSendMonoForumPeerId(), getSendMessageSuggestionParams());
+                    }"""
+        rep_norm = """                    if (photoEntry.imagePath != null) {
+                        SendMessagesHelper.prepareSendingPhoto(getAccountInstance(), photoEntry.imagePath, photoEntry.thumbPath, null, dialog_id, replyingMessageObject, getThreadMessage(), null, replyingQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, editingMessageObject, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, getMessageChatSendParams(), photoEntry.effectId, payStars, getSendMonoForumPeerId(), getSendMessageSuggestionParams(), photoEntry.hasSpoiler);
+                    } else if (photoEntry.path != null) {
+                        SendMessagesHelper.prepareSendingPhoto(getAccountInstance(), photoEntry.path, photoEntry.thumbPath, null, dialog_id, replyingMessageObject, getThreadMessage(), null, replyingQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, editingMessageObject, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, getMessageChatSendParams(), photoEntry.effectId, payStars, getSendMonoForumPeerId(), getSendMessageSuggestionParams(), photoEntry.hasSpoiler);
+                    }"""
+        if target_norm in chat:
+            chat = chat.replace(target_norm, rep_norm, 1)
+            print("ChatActivity: Enabled spoiler in sendMedia (normal)")
+
+        with open(chat_path, "w", encoding="utf-8") as f:
+            f.write(chat)
+
+    # 3. PhotoViewer.java
+    pv_path = "./TMessagesProj/src/main/java/org/telegram/ui/PhotoViewer.java"
+    if os.path.exists(pv_path):
+        with open(pv_path, "r", encoding="utf-8") as f:
+            pv = f.read()
+
+        target_pv = """                                if (photoEntry.imagePath != null) {
+                                    SendMessagesHelper.prepareSendingPhoto(parentChatActivity.getAccountInstance(), photoEntry.imagePath, photoEntry.thumbPath, null, parentChatActivity.getDialogId(), replyToMsg, parentChatActivity.getThreadMessage(), null, replyQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, editingMessageObject, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, parentChatActivity.getMessageChatSendParams(), 0, 0, parentChatActivity.getSendMonoForumPeerId(), parentChatActivity.getSendMessageSuggestionParams());
+                                } else if (photoEntry.path != null) {
+                                    SendMessagesHelper.prepareSendingPhoto(parentChatActivity.getAccountInstance(), photoEntry.path, photoEntry.thumbPath, null, parentChatActivity.getDialogId(), replyToMsg, parentChatActivity.getThreadMessage(), null, replyQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, editingMessageObject, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, parentChatActivity.getMessageChatSendParams(), 0, 0, parentChatActivity.getSendMonoForumPeerId(), parentChatActivity.getSendMessageSuggestionParams());
+                                }"""
+        rep_pv = """                                if (photoEntry.imagePath != null) {
+                                    SendMessagesHelper.prepareSendingPhoto(parentChatActivity.getAccountInstance(), photoEntry.imagePath, photoEntry.thumbPath, null, parentChatActivity.getDialogId(), replyToMsg, parentChatActivity.getThreadMessage(), null, replyQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, editingMessageObject, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, parentChatActivity.getMessageChatSendParams(), 0, 0, parentChatActivity.getSendMonoForumPeerId(), parentChatActivity.getSendMessageSuggestionParams(), photoEntry.hasSpoiler);
+                                } else if (photoEntry.path != null) {
+                                    SendMessagesHelper.prepareSendingPhoto(parentChatActivity.getAccountInstance(), photoEntry.path, photoEntry.thumbPath, null, parentChatActivity.getDialogId(), replyToMsg, parentChatActivity.getThreadMessage(), null, replyQuote, photoEntry.entities, photoEntry.stickers, null, photoEntry.ttl, editingMessageObject, videoEditedInfo, notify, scheduleDate, scheduleRepeatPeriod, 0, forceDocument, photoEntry.caption, parentChatActivity.getMessageChatSendParams(), 0, 0, parentChatActivity.getSendMonoForumPeerId(), parentChatActivity.getSendMessageSuggestionParams(), photoEntry.hasSpoiler);
+                                }"""
+        if target_pv in pv:
+            pv = pv.replace(target_pv, rep_pv, 1)
+            with open(pv_path, "w", encoding="utf-8") as f:
+                f.write(pv)
+            print("PhotoViewer: Enabled spoiler in sendButtonPressed")
+        else:
+            print("WARNING: target_pv not found in PhotoViewer.java")
+
 def patch_force_120hz():
     path = "./TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java"
     if not os.path.exists(path):
@@ -220,4 +351,5 @@ if __name__ == "__main__":
     patch_instant_camera_hd()
     patch_ghost_and_anti_delete()
     patch_message_restrictions()
+    patch_media_spoilers()
     patch_force_120hz()

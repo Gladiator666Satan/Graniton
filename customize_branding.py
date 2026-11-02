@@ -122,6 +122,101 @@ def patch_notifications_controller():
         f.write(content)
     print("Successfully updated NotificationsController.java")
 
+def patch_locale_controller():
+    path = "./TMessagesProj/src/main/java/org/telegram/messenger/LocaleController.java"
+    if not os.path.exists(path):
+        print(f"File {path} not found")
+        return
+
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    target = """    @Nullable
+    private String getStringV2(String key, @StringRes int stringRes, String fallback) {
+        final Context context = ApplicationLoader.applicationContext;
+        String value;
+
+        if (BuildVars.USE_CLOUD_STRINGS) {
+            value = localizationExternal.getByResNameOrResId(context, key, stringRes);
+            if (value != null) {
+                return value;
+            }
+
+            value = localizationExternal.getByResName(fallback);
+            if (value != null) {
+                return value;
+            }
+        }
+
+        checkLocalizationInternal();
+        value = localizationInternal.getByResNameOrResId(context, key, stringRes);
+        if (value != null) {
+            return value;
+        }
+
+        return localizationInternal.getByResName(fallback);
+    }"""
+
+    replacement = """    public static String applyGranitonBranding(String value) {
+        if (value == null) return null;
+        if (value.contains("Telegram")) {
+            value = value.replace("Telegram", "Graniton");
+        }
+        if (value.contains("Телеграм")) {
+            value = value.replace("Телеграм", "Graniton");
+        }
+        if (value.contains("телеграм")) {
+            value = value.replace("телеграм", "graniton");
+        }
+        if (value.contains("Graniton.org")) {
+            value = value.replace("Graniton.org", "telegram.org");
+        }
+        if (value.contains("Graniton.dog")) {
+            value = value.replace("Graniton.dog", "telegram.dog");
+        }
+        if (value.contains("Graniton.me")) {
+            value = value.replace("Graniton.me", "telegram.me");
+        }
+        return value;
+    }
+
+    @Nullable
+    private String getStringV2(String key, @StringRes int stringRes, String fallback) {
+        final Context context = ApplicationLoader.applicationContext;
+        String value;
+
+        if (BuildVars.USE_CLOUD_STRINGS) {
+            value = localizationExternal.getByResNameOrResId(context, key, stringRes);
+            if (value != null) {
+                return applyGranitonBranding(value);
+            }
+
+            value = localizationExternal.getByResName(fallback);
+            if (value != null) {
+                return applyGranitonBranding(value);
+            }
+        }
+
+        checkLocalizationInternal();
+        value = localizationInternal.getByResNameOrResId(context, key, stringRes);
+        if (value != null) {
+            return applyGranitonBranding(value);
+        }
+
+        return applyGranitonBranding(localizationInternal.getByResName(fallback));
+    }"""
+
+    if target in content:
+        content = content.replace(target, replacement, 1)
+        print("Patched LocaleController.java (dynamic Graniton UI branding)")
+    else:
+        print("WARNING: target not found in LocaleController.java")
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    print("Successfully updated LocaleController.java")
+
 if __name__ == "__main__":
     patch_strings()
     patch_notifications_controller()
+    patch_locale_controller()
