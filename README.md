@@ -18,6 +18,17 @@
 
 </div>
 
+## ⚖️ Дві версії застосунку (Standard vs Uncensored)
+
+У репозиторії підтримуються **дві незалежні редакції Graniton** у власних гілках. Обидві підписані єдиним RSA-ключем (`org.graniton.messenger`), тому їх можна вільно встановлювати поверх одна одної без втрати акаунта чи історії чатів:
+
+| Редакція | Гілка | Файл релізу APK | Особливості |
+| :--- | :--- | :--- | :--- |
+| **🔒 Graniton Standard** *(з цензурою)* | [`master`](https://github.com/Gladiator666Satan/Graniton/tree/master) | `Graniton-arm64-v8a.apk` | Повний функціонал Power-Pack зі збереженням стандартних контентних фільтрів платформи Google Play. |
+| **🔓 Graniton Uncensored** *(без цензури)* | [`uncensored`](https://github.com/Gladiator666Satan/Graniton/tree/uncensored) | `Graniton-Uncensored-arm64-v8a.apk` | Повне зняття блокувань Google Play (`android`, `android-all`, `all`), відкриття заблокованих каналів/ботів, розблокування `18+ / Sensitive` медіа та обхід вікової відео-верифікації. |
+
+---
+
 ## 🌌 Про проєкт (About Graniton)
 
 **Graniton** — високопродуктивна, конфіденційна та візуально переосмислена збірка на базі офіційного вихідного коду Telegram Android v13.1.1, скомпільована виключно під 64-бітну архітектуру `arm64-v8a` та оптимізована для флагмана **Samsung Galaxy S26 Ultra**.
@@ -82,7 +93,9 @@
 ## 📥 Встановлення (Installation Guide)
 
 1. Перейдіть у розділ [**Releases**](https://github.com/Gladiator666Satan/Graniton/releases).
-2. Завантажте файл **`Graniton-arm64-v8a.apk`** із найновішого релізу.
+2. Оберіть потрібну редакцію:
+   * **`Graniton-arm64-v8a.apk`** — стандартна версія **з цензурою** (гілка `master`).
+   * **`Graniton-Uncensored-arm64-v8a.apk`** — версія **без цензури** (гілка `uncensored`).
 3. Відкрийте завантажений файл на смартфоні та підтвердьте встановлення (підтримується пряме оновлення поверх попередньої версії Graniton).
 
 > [!NOTE]
@@ -95,7 +108,7 @@
 ## 🛠️ Автоматична збірка (CI/CD Pipeline)
 
 Проєкт повністю автоматизований через **GitHub Actions** ([`.github/workflows/build.yml`](.github/workflows/build.yml)):
-1. При кожному пуші в основну гілку `master` Java-дерево скидається до чистого апстріму та атомарно модифікується перевіреними скриптами (`customize_branding.py`, `apply_dark_purple_theme.py`, `apply_power_pack.py`, `generate_icons.py`) із суворою валідацією кожного патча.
+1. При кожному пуші в гілку `master` (або `uncensored`) Java-дерево скидається до чистого апстріму та атомарно модифікується перевіреними скриптами (`customize_branding.py`, `apply_dark_purple_theme.py`, `apply_power_pack.py`, а у гілці `uncensored` — додатково `apply_uncensored.py`) із суворою валідацією кожного патча.
 2. Gradle компілює 64-бітний `arm64-v8a` реліз (`assembleAfatRelease`), підписує постійним ключем Graniton і автоматично публікує готовий APK у [GitHub Releases](https://github.com/Gladiator666Satan/Graniton/releases).
 
 ---
