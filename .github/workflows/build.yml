@@ -1,9 +1,9 @@
-name: Build Custom Telegram Android
+name: Build Graniton Uncensored Android
 on: 
   workflow_dispatch:
   push:
     branches:
-      - master
+      - uncensored
 
 jobs:
   build:
@@ -27,7 +27,7 @@ jobs:
           # 1. Заміна назви додатка, заголовків сповіщень, папок галереї та системних імен на Graniton
           python3 customize_branding.py
           
-          # 2. Зміна Application ID через gradle.properties (без пошкодження namespace Java-коду)
+          # 2. Зміна Application ID через gradle.properties (сумісне оновлення поверх стандартного Graniton)
           sed -i 's/APP_PACKAGE=org.telegram.messenger/APP_PACKAGE=org.graniton.messenger/g' gradle.properties
 
           # 3. Оптимізація під Galaxy S26 Ultra (тільки arm64-v8a: білд ~8-10 хв)
@@ -58,6 +58,11 @@ jobs:
         run: |
           # Всі патчі приватності, збереження/дешифрування бомбочок, HD 1080p та перекладу з перевіркою цілісності
           python3 apply_power_pack.py
+
+      - name: Mod - Uncensored Edition (Bypass Google Play & Sensitive Restrictions)
+        run: |
+          # Повне зняття цензури Google Play ("android", "android-all", "all"), 18+ блюру та вікової верифікації
+          python3 apply_uncensored.py
 
       - name: Optimize Runner Memory
         run: |
@@ -100,56 +105,51 @@ jobs:
       - name: Prepare Release APK
         run: |
           mkdir -p release-output
-          find TMessagesProj_App/build/outputs/apk/ -name "*.apk" -type f -exec cp {} release-output/Graniton-arm64-v8a.apk \;
+          find TMessagesProj_App/build/outputs/apk/ -name "*.apk" -type f -exec cp {} release-output/Graniton-Uncensored-arm64-v8a.apk \;
           echo "Found APK:"
           ls -lh release-output/
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Graniton-release-apk
+          name: Graniton-Uncensored-release-apk
           path: "release-output/*.apk"
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (Uncensored Edition)
         uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/uncensored'
         with:
-          tag_name: "v13.1.1-graniton-b${{ github.run_number }}"
-          name: "Graniton v13.1.1 — Stable Power-Pack (Build ${{ github.run_number }})"
+          tag_name: "v13.1.1-uncensored-b${{ github.run_number }}"
+          name: "Graniton Uncensored v13.1.1 — Full Freedom Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🔮 Graniton v13.1.1 — Stable Release (Build ${{ github.run_number }})
+            ### 🔓 Graniton Uncensored v13.1.1 — Full Freedom Edition (Build ${{ github.run_number }})
             
-            **Флагманська стабільна збірка Graniton (основна гілка `master`) для Samsung Galaxy S26 Ultra (`arm64-v8a`)**
+            **Повністю розблокована версія Graniton БЕЗ цензури Google Play та вікових обмежень (гілка `uncensored`) для Samsung Galaxy S26 Ultra (`arm64-v8a`)**
             
-            ---
-            
-            #### 🔧 Виправлення та аудит у цьому релізі (Fixes & Improvements):
-            - 🛠️ **Виправлено `SecretMediaViewer` та збереження зникаючих медіа**: усунено помилку інжекції методу збереження, додано кнопку збереження в галерею без накладання на таймер та вимкнено примусове автовидалення при закритті.
-            - 🔓 **Автоматичне AES-дешифрування `.enc` для «бомбочок»**: вимкнено локальне `.enc`-шифрування для нових зникаючих фото/відео, а для вже кешованих реалізовано прозоре розшифрування (`EncryptedFileInputStream`) + резервне збереження `Bitmap` із пам'яті. Розблоковано збереження через контекстне меню в усіх чатах (включно з Secret Chats).
-            - ⏱️ **Відновлено індикатор таймера + Stealth-перегляд**: повернуто відображення бейджа таймера (`1`, `5s`, `10s`) на розмитому прев'ю в чаті, але заблоковано відправку звітів про відкриття (`sendSecretMessageRead`, `markMessageContentAsRead`) та команду видалення (`sendSecretMediaDelete`) — у відправника «бомбочки», одноразові голосові та кружечки залишаються невідкритими.
-            - 🎥 **Виправлено прихований даунгрейд 60fps ➔ 30fps для кружечків**: вимкнено внутрішнє обмеження 30 кадрів/с у `MediaController` для круглих відеоповідомлень `384×384` (тепер чесні `60fps` @ `2.5 Мбіт/с` у нативному круглому форматі).
-            - 📸 **Виправлено якість відео за замовчуванням (HD 1080p)**: у `PhotoViewer.selectCompression()` знято ліміт 720p (`maxCompression = 2`) — відео за замовчуванням відправляються в максимальному HD-профілі.
-            - 🙈 **Виправлено медіа-спойлери (`hasMediaSpoilers`)**: гарантована доставка прапорця спойлера на сервери MTProto для одиночних та групових фото й відео (отримувач бачить медіа розмитим).
-            - 🌐 **Розблоковано живий переклад чатів та повідомлень**: активовано `TranslateController` (верхня панель перекладу чату + кнопка в меню) із безкоштовним клієнтським фолбеком без Premium.
-            - 🔔 **Виправлено брендування сповіщень, біометрії та папок Галереї**:
-              - Усунено появу підпису «Telegram» у спливаючих сповіщеннях One UI (`android.substName`), встановлено неоново-фіолетовий акцент `#8b2be2`.
-              - Перекладено всі згадки в діалогах відбитка пальця та коду доступу (`LocaleController`), а також у системних чатах (`Graniton Notifications`, `Graniton Support`).
-              - Усі збережені фото, відео та файли тепер зберігаються в системні альбоми **`Graniton`** замість `Telegram`.
-            - 🏷️ **Оновлено логотип `GRANITON` та іконки APK**: усунено накладання літер у векторному логотипі шапки (`telegram_logo_2.xml`, `evenOdd`), а іконки згенеровано у нативних форматах `PNG`/`WEBP` під кожну щільність екрана (розмір APK зменшено на ~25–30 МБ).
+            > 💡 **Дві версії застосунку у репозиторії:**
+            > - 🔒 **`master` (`Graniton-arm64-v8a.apk`)** — стандартна версія зі збереженням базових обмежень платформи.
+            > - 🔓 **`uncensored` (`Graniton-Uncensored-arm64-v8a.apk`)** — ця збірка: повна свобода перегляду будь-яких каналів, ботів та медіа без блокувань Google Play.
+            > Обидві версії підписані єдиним ключем Graniton (`org.graniton.messenger`), тому ви можете вільно встановлювати одну поверх іншої без втрати акаунта чи історії чатів!
             
             ---
             
-            #### 🚀 Основні можливості Graniton Power-Pack:
-            - 🕵️ **True Ghost Mode**: приховано статуси *«друкує...»* / *«записує голосове...»* та локальне очищення бейджа `@` без звіту на сервер.
-            - 🛡️ **Anti-Delete Protection**: повідомлення залишаються у вашій історії навіть після видалення «для всіх».
-            - 🔓 **Bypass `noforwards` & Global Screenshot Unblock**: збереження, копіювання, пересилання із закритих каналів та повне зняття `FLAG_SECURE` у всьому застосунку.
-            - 🚫 **Ad-Free**: повністю заблоковано рекламні спонсорські повідомлення в каналах.
-            - ⚡ **Force 120Hz + ARM64-v8a**: максимальна плавність інтерфейсу на Galaxy S26 Ultra та паралельне встановлення (`org.graniton.messenger`).
-            - 🔮 **Dark Purple Energy Theme**: фірмова темна фіолетова палітра `#0d0214` / `#8b2be2` за замовчуванням.
+            #### 🔓 Що розблоковано у версії Uncensored (`apply_uncensored.py`):
+            - 🚫 **Знято блокування Google Play Store (`platform: "android"`, `"android-all"`, `"all"`)**: канали, групи, боти, міні-додатки та окремі пости, які раніше видавали помилку *«Цей канал не може бути відображений, оскільки його не можна переглядати в застосунках, завантажених із Google Play»*, тепер відкриваються та відображаються миттєво й без жодних заглушок (`MessagesController.getRestrictionReason`).
+            - 🔞 **Вимкнено примусове приховування `18+ / Sensitive Content`**: знято примусовий блюр «Чутливий контент» на фото/відео/GIF у каналах та прибрано діалогові вікна попередження під час входу (`MessagesController.isSensitive`, `MessageObject.isSensitive`), при цьому звичайні авторські спойлери користувачів (`media.spoiler`) працюють штатно.
+            - 🪪 **Вимкнено відео-верифікацію віку (`ThemeActivity.verifyAge`)**: обхід нового бота перевірки віку з Telegram v13.1+.
+            - 📡 **Direct / Non-Store MTProto режим (`ConnectionsManager.init`)**: клієнт ніколи не передає ідентифікатор магазину Google Play (`com.android.vending`) на сервери MTProto, зберігаючи повну сумісність із Play Integrity та Firebase Push.
             
             ---
             
-            #### 📥 Встановлення / Оновлення:
-            1. Завантажте **`Graniton-arm64-v8a.apk`** нижче.
-            2. Встановіть поверх наявної версії (постійний RSA Keystore збережено, дані та чати залишаються на місці). При запиті Play Protect натисніть *«Детальніше» ➔ «Все одно встановити»*.
-          files: release-output/Graniton-arm64-v8a.apk
+            #### 🚀 Усі можливості Graniton Power-Pack також включено:
+            - 💣 **Stealth Bombs & View-Once**: збереження зникаючих фото/відео в галерею (з прозорим розшифруванням `.enc`), збереження бейджа таймера, перегляд без звіту відправнику та розблоковані скриншоти (`FLAG_SECURE` знято).
+            - 🎥 **HD 60fps Video Notes (`2.5 Мбіт/с`)** + **HD 1080p відео за замовчуванням** + **робочі медіа-спойлери**.
+            - 🕵️ **True Ghost Mode**, 🛡️ **Anti-Delete Protection**, 🔓 **Bypass `noforwards`**, 🌐 **Живий переклад чатів без Premium**, 🚫 **Ad-Free**.
+            - ⚡ **Force 120Hz + Dark Purple Energy Theme (`#0d0214` / `#8b2be2`) + брендування One UI**.
+            
+            ---
+            
+            #### 📥 Встановлення / Перехід зі звичайної версії:
+            1. Завантажте **`Graniton-Uncensored-arm64-v8a.apk`** нижче.
+            2. Встановіть прямо поверх наявного Graniton — сесія, чати та налаштування збережуться автоматично.
+          files: release-output/Graniton-Uncensored-arm64-v8a.apk
