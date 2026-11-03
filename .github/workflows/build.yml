@@ -24,7 +24,7 @@ jobs:
 
       - name: Customize Branding (Graniton)
         run: |
-          # 1. Заміна назви додатка, заголовків сповіщень та системних імен на Graniton
+          # 1. Заміна назви додатка, заголовків сповіщень, папок галереї та системних імен на Graniton
           python3 customize_branding.py
           
           # 2. Зміна Application ID через gradle.properties (без пошкодження namespace Java-коду)
@@ -42,7 +42,7 @@ jobs:
             fi
           fi
 
-          # 5. Повноцінна заміна адаптивних та звичайних іконок для One UI (Galaxy S26 Ultra)
+          # 5. Повноцінна генерація адаптивних та звичайних іконок (реальні PNG/WEBP за щільністю) для One UI
           pip3 install --break-system-packages pillow || sudo apt-get install -y python3-pil || true
           python3 generate_icons.py
 
@@ -54,27 +54,14 @@ jobs:
           # Впровадження повноцінної Dark Purple Energy палітри в код і тему
           python3 apply_dark_purple_theme.py
 
-      - name: Mod - Privacy & Secret Media Saving
+      - name: Mod - Power Pack (Ghost, Stealth Bombs, Anti-Delete, HD 60fps, 120Hz, Chat Translate)
         run: |
-          # 1. Відключення звіту про прочитання
-          sed -i 's/MessagesController.getInstance(currentAccount).markMentionsAsRead/ \/\/ markMentionsAsRead/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java
-          
-          # 2. Безпечне зняття заборони на збереження зникаючих медіа в MessageObject
-          sed -i 's/mediaTtl > 0/mediaTtl == -1/g' ./TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java
-          sed -i 's/public boolean isSecretMedia() {/public boolean isSecretMedia() { return false; } public boolean _unused_isSecretMedia() {/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
-          sed -i 's/public static boolean isSecretMedia(TLRPC.Message message) {/public static boolean isSecretMedia(TLRPC.Message message) { return false; } public static boolean _unused_static_isSecretMedia(TLRPC.Message message) {/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MessageObject.java
-          
-          # 3. Безпечне вимкнення FLAG_SECURE
-          find . -name "*.java" -type f -exec sed -i 's/WindowManager\.LayoutParams\\.FLAG_SECURE/0/g' {} +
-
-      - name: Mod - Interface Clean & Media Boost
-        run: |
-          # 1. Максимальна якість камери та менше стиснення
-          sed -i 's/int selectedCompression = 1;/int selectedCompression = 0;/g' ./TMessagesProj/src/main/java/org/telegram/messenger/MediaController.java
+          # Всі патчі приватності, збереження/дешифрування бомбочок, HD 1080p та перекладу з перевіркою цілісності
+          python3 apply_power_pack.py
 
       - name: Optimize Runner Memory
         run: |
-          # Адаптація виділення памʼязті JVM під GitHub Actions runner
+          # Адаптація виділення памʼяті JVM під GitHub Actions runner
           sed -i 's/-Xmx8g/-Xmx4g/g' gradle.properties
 
       - name: Set up JDK
@@ -85,7 +72,7 @@ jobs:
 
       - name: Generate Clean Keystore
         run: |
-          # Відновлення постійного чистого RSA-ключа Graniton для повної сумісності оновлень
+          # Створення стабільного release keystore із зафіксованими креденшелами
           base64 -d ./TMessagesProj/config/release.keystore.b64 > ./TMessagesProj/config/release.keystore
           sed -i 's/RELEASE_KEY_PASSWORD=.*/RELEASE_KEY_PASSWORD=granitonpass/g' gradle.properties
           sed -i 's/RELEASE_KEY_ALIAS=.*/RELEASE_KEY_ALIAS=graniton/g' gradle.properties
@@ -127,27 +114,42 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master'
         with:
-          tag_name: "v13.1.1-b${{ github.run_number }}"
-          name: "Graniton v13.1.1 (Build ${{ github.run_number }})"
+          tag_name: "v13.1.1-graniton-b${{ github.run_number }}"
+          name: "Graniton v13.1.1 — Stable Power-Pack (Build ${{ github.run_number }})"
           body: |
-            ### 🔮 Graniton Release v13.1.1 (Build ${{ github.run_number }})
+            ### 🔮 Graniton v13.1.1 — Stable Release (Build ${{ github.run_number }})
             
-            **Custom Telegram client for Samsung Galaxy S26 Ultra**
+            **Флагманська стабільна збірка Graniton (основна гілка `master`) для Samsung Galaxy S26 Ultra (`arm64-v8a`)**
             
-            #### 🚀 Що нового та впроваджено:
-            - 🔔 **Фікс назви сповіщень (Graniton)**: усунено баг, через який сповіщення під час надходження чи на заблокованому екрані підписувались як «Telegram». Усі рядки заголовків сповіщень (NotificationHiddenName, NotificationHiddenChatName, SecretChatName) та системні заголовки One UI (android.substName) оновлено до Graniton.
-            - 🏷️ **Шапка чатів Graniton**: напис у шапці головного екрана змінено на векторний логотип "GRANITON" замість Telegram.
-            - 🎨 **Брендинг Graniton**: унікальний `org.graniton.messenger` (встановлюється паралельно з офіційним Telegram).
-            - 🔮 **Dark Purple Energy Theme**: повноцінна кастомна тема з палітрою `#0d0214` та неоновими акцентами `#8a2be2` за замовчуванням.
-            - 📱 **One UI Adaptive Icon**: кастомна іконка під Samsung One UI з глибоким фіолетовим бекграундом `#0d0214`.
-            - 📸 **Galaxy S26 Ultra Media Boost**: вимкнено надмірне стиснення фото/відео при зйомці, білд виключно під `arm64-v8a`.
-            - 🛡️ **Privacy & Ghost Controls**:
-              - Знято блокування скриншотів (`FLAG_SECURE = 0`).
-              - Збереження зникаючих фото/відео з таймером у галерею.
-              - Вимкнено звіти про прочитання повідомлень.
-            - 🔑 **Постійний підпис**: зафіксовано постійний RSA 2048-бітний Keystore для безпроблемного оновлення поверх наявної версії.
+            ---
             
-            #### 📥 Встановлення:
-            1. Завантажте `Graniton-arm64-v8a.apk` нижче.
-            2. Відкрийте та встановіть (при запиті Play Protect натисніть *«Детальніше» ➔ «Все одно встановити»*).
+            #### 🔧 Виправлення та аудит у цьому релізі (Fixes & Improvements):
+            - 🛠️ **Виправлено `SecretMediaViewer` та збереження зникаючих медіа**: усунено помилку інжекції методу збереження, додано кнопку збереження в галерею без накладання на таймер та вимкнено примусове автовидалення при закритті.
+            - 🔓 **Автоматичне AES-дешифрування `.enc` для «бомбочок»**: вимкнено локальне `.enc`-шифрування для нових зникаючих фото/відео, а для вже кешованих реалізовано прозоре розшифрування (`EncryptedFileInputStream`) + резервне збереження `Bitmap` із пам'яті. Розблоковано збереження через контекстне меню в усіх чатах (включно з Secret Chats).
+            - ⏱️ **Відновлено індикатор таймера + Stealth-перегляд**: повернуто відображення бейджа таймера (`1`, `5s`, `10s`) на розмитому прев'ю в чаті, але заблоковано відправку звітів про відкриття (`sendSecretMessageRead`, `markMessageContentAsRead`) та команду видалення (`sendSecretMediaDelete`) — у відправника «бомбочки», одноразові голосові та кружечки залишаються невідкритими.
+            - 🎥 **Виправлено прихований даунгрейд 60fps ➔ 30fps для кружечків**: вимкнено внутрішнє обмеження 30 кадрів/с у `MediaController` для круглих відеоповідомлень `384×384` (тепер чесні `60fps` @ `2.5 Мбіт/с` у нативному круглому форматі).
+            - 📸 **Виправлено якість відео за замовчуванням (HD 1080p)**: у `PhotoViewer.selectCompression()` знято ліміт 720p (`maxCompression = 2`) — відео за замовчуванням відправляються в максимальному HD-профілі.
+            - 🙈 **Виправлено медіа-спойлери (`hasMediaSpoilers`)**: гарантована доставка прапорця спойлера на сервери MTProto для одиночних та групових фото й відео (отримувач бачить медіа розмитим).
+            - 🌐 **Розблоковано живий переклад чатів та повідомлень**: активовано `TranslateController` (верхня панель перекладу чату + кнопка в меню) із безкоштовним клієнтським фолбеком без Premium.
+            - 🔔 **Виправлено брендування сповіщень, біометрії та папок Галереї**:
+              - Усунено появу підпису «Telegram» у спливаючих сповіщеннях One UI (`android.substName`), встановлено неоново-фіолетовий акцент `#8b2be2`.
+              - Перекладено всі згадки в діалогах відбитка пальця та коду доступу (`LocaleController`), а також у системних чатах (`Graniton Notifications`, `Graniton Support`).
+              - Усі збережені фото, відео та файли тепер зберігаються в системні альбоми **`Graniton`** замість `Telegram`.
+            - 🏷️ **Оновлено логотип `GRANITON` та іконки APK**: усунено накладання літер у векторному логотипі шапки (`telegram_logo_2.xml`, `evenOdd`), а іконки згенеровано у нативних форматах `PNG`/`WEBP` під кожну щільність екрана (розмір APK зменшено на ~25–30 МБ).
+            
+            ---
+            
+            #### 🚀 Основні можливості Graniton Power-Pack:
+            - 🕵️ **True Ghost Mode**: приховано статуси *«друкує...»* / *«записує голосове...»* та локальне очищення бейджа `@` без звіту на сервер.
+            - 🛡️ **Anti-Delete Protection**: повідомлення залишаються у вашій історії навіть після видалення «для всіх».
+            - 🔓 **Bypass `noforwards` & Global Screenshot Unblock**: збереження, копіювання, пересилання із закритих каналів та повне зняття `FLAG_SECURE` у всьому застосунку.
+            - 🚫 **Ad-Free**: повністю заблоковано рекламні спонсорські повідомлення в каналах.
+            - ⚡ **Force 120Hz + ARM64-v8a**: максимальна плавність інтерфейсу на Galaxy S26 Ultra та паралельне встановлення (`org.graniton.messenger`).
+            - 🔮 **Dark Purple Energy Theme**: фірмова темна фіолетова палітра `#0d0214` / `#8b2be2` за замовчуванням.
+            
+            ---
+            
+            #### 📥 Встановлення / Оновлення:
+            1. Завантажте **`Graniton-arm64-v8a.apk`** нижче.
+            2. Встановіть поверх наявної версії (постійний RSA Keystore збережено, дані та чати залишаються на місці). При запиті Play Protect натисніть *«Детальніше» ➔ «Все одно встановити»*.
           files: release-output/Graniton-arm64-v8a.apk
